@@ -1,0 +1,79 @@
+---
+description: Turn subjective trading opinions into testable rules — instrument/direction/entry/horizon/stop/exit extraction, per-field label scoring, paired-baseline cost-adjusted backtest
+globs: []
+alwaysApply: false
+---
+
+# skill-opinion-to-ruler
+
+Extract testable trading rules from free-form opinion text. Every opinion is split into sentences, and each actionable sentence becomes a rule with six decidable fields. Fields the text does not state stay `null` — nothing is invented.
+
+## When to use
+
+- You have a paragraph of market commentary and need to know whether it is testable
+- You want per-field extraction accuracy against a human-labelled gold set
+- You want cost-adjusted results compared with a simple buy-and-hold baseline
+- You want to measure how much of a source's output is *not* rule-able
+
+## What it is not
+
+- Not a sentiment scorer (no aggregate bullish/bearish proxy)
+- Not a summariser
+- Not a direction-hit-rate counter
+
+## Quick start
+
+```bash
+cd skill-opinion-to-ruler
+python3 scripts/build.py
+python3 scripts/annotate.py tests/fixtures/labels.json
+python3 scripts/evaluate.py --fixture
+python3 -m pytest tests/ -v
+```
+
+```python
+import sys; sys.path.insert(0, "skill-opinion-to-ruler/scripts")
+from build import run
+
+result = run({
+    "text": "Re-bar holds 3850, sees 4100 in two weeks, wrong below 3780.",
+    "published_at": "2024-01-05T08:30:00+08:00",
+})
+```
+
+## The six fields
+
+| Field | Meaning |
+|---|---|
+| `instrument` | Product mapped to a futures symbol |
+| `direction` | long / short / neutral |
+| `entry_trigger` | Price expression or market entry |
+| `horizon` | Trading days plus expiry action |
+| `stop_loss` | Explicit stop, or `null` |
+| `exit_rule` | Profit target or conditional exit, or `null` |
+
+## Testability classes
+
+- `full` — the text itself states a horizon and at least one risk exit
+- `partial` — tradable, but the frozen policy has to fill a gap
+- `neutral` — explicit stand-aside; no position is the signal
+- `none` — no instrument or no direction; reported, never dropped
+
+## Evaluation
+
+- Baseline: paired buy-and-hold over identical entry/exit dates (`cash` also available)
+- Costs: 3bp commission + 2bp slippage, both sides
+- No look-ahead: bars strictly after `published_at`; fills at the next open
+- Verdict: `positive` / `negative` / `inconclusive` from a fixed rule (>= 12 trades and a bootstrap CI)
+
+A negative result is a valid deliverable.
+
+## Dependencies
+
+- Python 3.8+
+- Standard library only
+- Optional: `panda-data==1.0.6` for the live data channel
+
+## Boundaries
+
+Research and educational use only. Not investment advice. Daily-close simulation; no intraday triggers, limit-locked bars, liquidity impact or margin modelling. Live execution must be independently re-validated.

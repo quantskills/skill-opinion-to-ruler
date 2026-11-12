@@ -1,0 +1,101 @@
+{
+  "_note": "Synthetic fixture opinions. Text is written by hand to exercise the extractor; nothing here is a real market opinion or investment advice.",
+  "documents": [
+    {
+      "id": "op-001",
+      "source": "fixture",
+      "published_at": "2024-01-05T08:30:00+08:00",
+      "text": "螺纹钢主力如果站稳3850，未来两周有望上冲4100，跌破3780则看错。"
+    },
+    {
+      "id": "op-002",
+      "source": "fixture",
+      "published_at": "2024-01-08T08:30:00+08:00",
+      "text": "铁矿石主力短线看空，跌破840继续下行，止损880。"
+    },
+    {
+      "id": "op-003",
+      "source": "fixture",
+      "published_at": "2024-01-10T08:30:00+08:00",
+      "text": "螺纹钢中线上看4300，回踩3800附近可以买，跌破3700止损。"
+    },
+    {
+      "id": "op-004",
+      "source": "fixture",
+      "published_at": "2024-01-12T08:30:00+08:00",
+      "text": "铁矿石不看空，站上900才算转多。"
+    },
+    {
+      "id": "op-005",
+      "source": "fixture",
+      "published_at": "2024-01-15T08:30:00+08:00",
+      "text": "螺纹钢观望，等突破4000再说。"
+    },
+    {
+      "id": "op-006",
+      "source": "fixture",
+      "published_at": "2024-01-17T08:30:00+08:00",
+      "text": "明年黑色系整体环境应该比今年好。"
+    },
+    {
+      "id": "op-007",
+      "source": "fixture",
+      "published_at": "2024-01-19T08:30:00+08:00",
+      "text": "铁矿石看多，目标950，止损860。"
+    },
+    {
+      "id": "op-008",
+      "source": "fixture",
+      "published_at": "2024-01-22T08:30:00+08:00",
+      "text": "螺纹钢主力跌破3750可以试空，目标3600，止损3820。"
+    },
+    {
+      "id": "op-009",
+      "source": "fixture",
+      "published_at": "2024-01-24T08:30:00+08:00",
+      "text": "铁矿石主力跌破870继续看空，目标820。"
+    },
+    {
+      "id": "op-010",
+      "source": "fixture",
+      "published_at": "2024-01-26T08:30:00+08:00",
+      "text": "螺纹钢主力站上3900看多，目标4150，止损3830。"
+    },
+    {
+      "id": "op-011",
+      "source": "fixture",
+      "published_at": "2024-01-29T08:30:00+08:00",
+      "text": "铁矿石中线看多，上看1000，跌破900则观点失效。"
+    },
+    {
+      "id": "op-012",
+      "source": "fixture",
+      "published_at": "2024-01-31T08:30:00+08:00",
+      "text": "螺纹钢短线偏空，目标3700。"
+    },
+    {
+      "id": "op-013",
+      "source": "fixture",
+      "published_at": "2024-02-02T08:30:00+08:00",
+      "text": "铁矿石站上920看多，目标980，止损890。"
+    },
+    {
+      "id": "op-014",
+      "source": "fixture",
+      "published_at": "2024-02-05T08:30:00+08:00",
+      "text": "螺纹钢主力站稳3950看多，未来一个月上看4300，跌破3880止损。"
+    },
+    {
+      "id": "op-015",
+      "source": "fixture",
+      "published_at": "2024-02-07T08:30:00+08:00",
+      "text": "铁矿石跌破910试空，目标860，止损940。"
+    },
+    {
+      "id": "op-016",
+      "source": "fixture",
+      "published_at": "2024-02-09T08:30:00+08:00",
+      "text": "螺纹钢暂时不参与，方向不明。"
+    }
+  ]
+}

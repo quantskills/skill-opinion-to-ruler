@@ -1,0 +1,66 @@
+openapi: 3.1.0
+info:
+  title: skill-opinion-to-ruler
+  description: Extract testable trading rules from subjective market opinions. Maps free-form text into instrument, direction, entry trigger, horizon, stop loss and exit rule; validates extraction against a human-labelled sample; evaluates cost-adjusted results against a paired buy-and-hold baseline.
+  version: 0.1.0
+
+x-skill-info:
+  name: skill-opinion-to-ruler
+  type: alpha
+  category: opinion-rule-extraction
+  entry: scripts/build.py
+  tags: [quant, alpha, opinion, rule-extraction, backtest, futures]
+
+x-steps:
+  - id: extract
+    script: scripts/build.py
+    description: Run the built-in demo that extracts rules from a mixed opinion paragraph.
+    auth_required: false
+  - id: annotate
+    script: scripts/annotate.py
+    description: Score extraction against a human-labelled JSON sample, per field.
+    auth_required: false
+  - id: evaluate
+    script: scripts/evaluate.py
+    description: End-to-end extraction, label scoring, paired-baseline backtest and verdict.
+    auth_required: false
+
+x-data-sources:
+  - id: panda_data
+    methods: [get_future_dominant, get_future_daily]
+    auth_env: [PANDA_DATA_USERNAME, PANDA_DATA_PASSWORD]
+  - id: csv
+    description: Local bars with date,open,high,low,close[,volume] header.
+
+x-input-schema:
+  type: object
+  properties:
+    documents:
+      type: array
+      items:
+        type: object
+        required: [text]
+        properties:
+          id: {type: string}
+          source: {type: string}
+          published_at: {type: string, description: "ISO-8601; required for backtesting"}
+          text: {type: string, description: "The opinion text, verbatim"}
+
+x-output-fields:
+  [schema_version, extractor_version, documents, summary, config, config_hash]
+
+x-rule-fields:
+  [rule_id, source_text, instrument, direction, entry_trigger, horizon,
+   stop_loss, exit_rule, position_size, missing_fields, ambiguity, assumed, testability]
+
+x-testability-enum: [full, partial, neutral, none]
+
+x-requirements:
+  runtime: python >= 3.8
+  packages: []
+  optional_packages: ["panda-data==1.0.6"]
+
+x-boundaries:
+  - Daily-close mechanics only; no intraday triggers or limit-locked fills.
+  - Cross-rule capital competition is not modelled.
+  - Research and educational use only; not investment advice.
