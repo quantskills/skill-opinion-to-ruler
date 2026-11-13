@@ -1,0 +1,145 @@
+{
+  "_note": "English gold set. Labels written by reading each sentence. null means the text does not state the field. testability uses the no-default definition.",
+  "samples": [
+    {
+      "id": "en-01",
+      "text": "Rebar holds 3850, sees 4100 in two weeks, wrong below 3780.",
+      "published_at": "2024-01-05T08:30:00+08:00",
+      "labels": {
+        "instrument_symbol": "RB",
+        "direction": "long",
+        "entry_expr": "close > 3850",
+        "stop_expr": "close < 3780",
+        "exit_expr": "close >= 4100",
+        "horizon_days": 10,
+        "testability": "full"
+      }
+    },
+    {
+      "id": "en-02",
+      "text": "Iron ore is bearish short-term, breaks below 840, stop at 880.",
+      "published_at": "2024-01-08T08:30:00+08:00",
+      "labels": {
+        "instrument_symbol": "I",
+        "direction": "short",
+        "entry_expr": "close < 840",
+        "stop_expr": "close > 880",
+        "exit_expr": null,
+        "horizon_days": 3,
+        "testability": "full"
+      }
+    },
+    {
+      "id": "en-03",
+      "text": "Copper looks bullish, target 78000, stop loss 75000.",
+      "published_at": "2024-01-10T08:30:00+08:00",
+      "labels": {
+        "instrument_symbol": "CU",
+        "direction": "long",
+        "entry_expr": "market_on_next_open",
+        "stop_expr": "close < 75000",
+        "exit_expr": "close >= 78000",
+        "horizon_days": null,
+        "testability": "partial"
+      }
+    },
+    {
+      "id": "en-04",
+      "text": "Crude oil neutral, wait and see.",
+      "published_at": "2024-01-12T08:30:00+08:00",
+      "labels": {
+        "instrument_symbol": "SC",
+        "direction": "neutral",
+        "entry_expr": null,
+        "stop_expr": null,
+        "exit_expr": null,
+        "horizon_days": null,
+        "testability": "neutral"
+      }
+    },
+    {
+      "id": "en-05",
+      "text": "Commodities should do better next year.",
+      "published_at": "2024-01-15T08:30:00+08:00",
+      "labels": {
+        "instrument_symbol": null,
+        "direction": null,
+        "entry_expr": null,
+        "stop_expr": null,
+        "exit_expr": null,
+        "horizon_days": null,
+        "testability": "none"
+      }
+    },
+    {
+      "id": "en-06",
+      "text": "Rebar is not bearish, could turn bullish above 3900.",
+      "published_at": "2024-01-17T08:30:00+08:00",
+      "labels": {
+        "instrument_symbol": "RB",
+        "direction": "long",
+        "entry_expr": "close > 3900",
+        "stop_expr": null,
+        "exit_expr": null,
+        "horizon_days": null,
+        "testability": "partial"
+      }
+    },
+    {
+      "id": "en-07",
+      "text": "Gold targets 600 over the next month, stop below 560.",
+      "published_at": "2024-01-19T08:30:00+08:00",
+      "labels": {
+        "instrument_symbol": "AU",
+        "direction": "long",
+        "entry_expr": "market_on_next_open",
+        "stop_expr": "close < 560",
+        "exit_expr": "close >= 600",
+        "horizon_days": 20,
+        "testability": "full"
+      }
+    },
+    {
+      "id": "en-08",
+      "text": "Iron ore targeting 900 in three months, stop 800.",
+      "published_at": "2024-01-22T08:30:00+08:00",
+      "labels": {
+        "instrument_symbol": "I",
+        "direction": "long",
+        "entry_expr": "market_on_next_open",
+        "stop_expr": "close < 800",
+        "exit_expr": "close >= 900",
+        "horizon_days": 60,
+        "testability": "full"
+      }
+    },
+    {
+      "id": "en-09",
+      "text": "Rebar pullback to 3800 is a buy, stop 3700, target 4300.",
+      "published_at": "2024-01-24T08:30:00+08:00",
+      "labels": {
+        "instrument_symbol": "RB",
+        "direction": "long",
+        "entry_expr": "close <= 3800",
+        "stop_expr": "close < 3700",
+        "exit_expr": "close >= 4300",
+        "horizon_days": null,
+        "testability": "partial"
+      }
+    },
+    {
+      "id": "en-10",
+      "text": "Silver stays in a range, no position for now.",
+      "published_at": "2024-01-26T08:30:00+08:00",
+      "labels": {
+        "instrument_symbol": "AG",
+        "direction": "neutral",
+        "entry_expr": null,
+        "stop_expr": null,
+        "exit_expr": null,
+        "horizon_days": null,
+        "testability": "neutral"
+      }
+    }
+  ]
+}

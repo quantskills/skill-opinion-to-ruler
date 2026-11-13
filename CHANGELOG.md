@@ -6,6 +6,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [0.2.0] — 2026-11-13
+
+### Added
+
+- **英文支持**：品种别名（`rebar` / `iron ore` / `copper` / `crude oil` …）、方向词（`bullish` / `bearish` / `long` / `short` / `buy` / `sell`）、期限（`two weeks` / `next month` / `three months` …）、价位语义（`holds` / `breaks below` / `targets` / `stop-loss` / `pullback`）全部并入同一套词典。
+- **英文句子分句**：独立的正则，避免把 `78000.5` 这类小数从中间切断；中英混写时按中文规则分句。
+- **词边界匹配**：ASCII 词汇按 `\b` 匹配，`long` 不再命中 `longer`，`corn` 不再命中 `corner`。
+- **英文否定**：`not / no / never / avoid / won't` 等识别为否定，使 `not bearish` 正确翻转成多头。
+- **英文标注集**：`tests/fixtures/labels_en.json`，10 条样本，7 个字段 exact-match 均 1.00。
+- **测试**：新增 12 个英文用例（含词边界、小数、混写、否定、期限变体），总数 62。
+
+### Changed
+
+- `references/validation.md` 增加语言覆盖要求，复现命令同步加入英文标注评分。
+- 版本号统一升至 `0.2.0`（`skill.json` / `agents/openai.yaml` / `VERSION`）。
+
+### Unchanged
+
+- 中文行为零回归：中文标注集 exact-match 仍为 1.00，`config_hash` 因抽取器版本变化而更新。
+
+---
+
 ## [0.1.0] — 2026-11-12
 
 ### Added

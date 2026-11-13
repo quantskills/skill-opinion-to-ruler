@@ -66,63 +66,164 @@ INSTRUMENTS = [
     ("纸浆", "SP", "SHFE"),
     ("橡胶", "RU", "SHFE"),
     ("燃油", "FU", "SHFE"),
+    # English aliases. ASCII names match on word boundaries, and lowercase
+    # product words ("copper") are distinct from the uppercase contract codes.
+    ("CSI 300", "IF", "CFFEX"),
+    ("SSE 50", "IH", "CFFEX"),
+    ("CSI 500", "IC", "CFFEX"),
+    ("CSI 1000", "IM", "CFFEX"),
+    ("rebar", "RB", "SHFE"),
+    ("iron ore", "I", "DCE"),
+    ("hot rolled coil", "HC", "SHFE"),
+    ("hot-rolled coil", "HC", "SHFE"),
+    ("stainless steel", "SS", "SHFE"),
+    ("corn starch", "CS", "DCE"),
+    ("palm oil", "P", "DCE"),
+    ("fuel oil", "FU", "SHFE"),
+    ("crude oil", "SC", "INE"),
+    ("copper", "CU", "SHFE"),
+    ("aluminum", "AL", "SHFE"),
+    ("aluminium", "AL", "SHFE"),
+    ("zinc", "ZN", "SHFE"),
+    ("nickel", "NI", "SHFE"),
+    ("lead", "PB", "SHFE"),
+    ("tin", "SN", "SHFE"),
+    ("gold", "AU", "SHFE"),
+    ("silver", "AG", "SHFE"),
+    ("bitumen", "BU", "SHFE"),
+    ("asphalt", "BU", "SHFE"),
+    ("soybean meal", "M", "DCE"),
+    ("soybean oil", "Y", "DCE"),
+    ("rapeseed meal", "RM", "CZCE"),
+    ("rapeseed oil", "OI", "CZCE"),
+    ("methanol", "MA", "CZCE"),
+    ("sugar", "SR", "CZCE"),
+    ("cotton", "CF", "CZCE"),
+    ("glass", "FG", "CZCE"),
+    ("soda ash", "SA", "CZCE"),
+    ("urea", "UR", "CZCE"),
+    ("coke", "J", "DCE"),
+    ("coking coal", "JM", "DCE"),
+    ("polypropylene", "PP", "DCE"),
+    ("plastic", "L", "DCE"),
+    ("corn", "C", "DCE"),
+    ("egg", "JD", "DCE"),
+    ("apple", "AP", "CZCE"),
+    ("jujube", "CJ", "CZCE"),
+    ("peanut", "PK", "CZCE"),
+    ("ferrosilicon", "SF", "CZCE"),
+    ("silicomanganese", "SM", "CZCE"),
+    ("pulp", "SP", "SHFE"),
+    ("rubber", "RU", "SHFE"),
 ]
 
-MAIN_PAT = re.compile(r"(主力|主连|连续)")
+MAIN_PAT = re.compile(r"(主力|主连|连续|dominant|front[- ]month|continuous)", re.IGNORECASE)
 
 # ---------------------------------------------------------------------------
-# Direction lexicon
+# Direction lexicon (Chinese + English)
 # ---------------------------------------------------------------------------
 LONG_WORDS = ["看多", "做多", "买入", "买进", "多单", "看涨", "偏多", "加多", "逢低买",
-              "逢低做多", "试多", "转多", "买多"]
+              "逢低做多", "试多", "转多", "买多",
+              "bullish", "long", "buy", "go long", "upside", "goes up", "higher"]
 SHORT_WORDS = ["看空", "做空", "卖出", "卖空", "空单", "看跌", "偏空", "加空", "逢高卖",
-               "逢高做空", "试空", "转空", "卖空"]
-NEUTRAL_WORDS = ["观望", "中性", "不参与", "区间操作", "离场观望", "不追"]
+               "逢高做空", "试空", "转空",
+               "bearish", "short", "sell", "go short", "downside", "goes down", "lower"]
+NEUTRAL_WORDS = ["观望", "中性", "不参与", "区间操作", "离场观望", "不追",
+                 "neutral", "stand aside", "stay out", "no position", "wait and see", "range-bound"]
 NEGATIONS = ["不", "没有", "别", "并非", "不太", "未"]
 
+# English negation is matched as a word just before the direction word.
+EN_NEGATION_PAT = re.compile(
+    r"\b(?:not|no|never|avoid|without|don't|doesn't|isn't|aren't|won't|no longer)\s+"
+    r"(?:\w+\s+){0,2}$",
+    re.IGNORECASE,
+)
+
 # ---------------------------------------------------------------------------
-# Horizon lexicon: pattern -> trading days
+# Horizon lexicon: pattern -> trading days (Chinese + English)
 # ---------------------------------------------------------------------------
 HORIZON_PATTERNS = [
-    (r"(当天|当日|日内|今天|今日|隔夜)", 1),
-    (r"(短线|短期)", 3),
-    (r"(一天|1天|一个交易日|1个交易日)", 1),
-    (r"(三天|3天|三个交易日|3个交易日)", 3),
-    (r"(一周|1周|本周|下周|未来一周|一周内)", 5),
-    (r"(两周|2周|半个月|未来两周)", 10),
-    (r"(中线|中期)", 20),
-    (r"(一个月|1个月|本月|未来一个月)", 20),
-    (r"(一季度|一个季度|1个季度|三个月|3个月)", 60),
-    (r"(长线|长期)", 60),
+    (r"(当天|当日|日内|今天|今日|隔夜|\b(?:today|intraday|overnight)\b)", 1),
+    (r"(短线|短期|\bshort[- ]term\b)", 3),
+    (r"(一天|1天|一个交易日|1个交易日|\b(?:one|1|a)\s+day\b)", 1),
+    (r"(三天|3天|三个交易日|3个交易日|\b(?:three|3)\s+days?\b)", 3),
+    (r"(一周|1周|本周|下周|未来一周|一周内|\b(?:one|1|a)\s+week\b|\bthis week\b|\bnext week\b)", 5),
+    (r"(两周|2周|半个月|未来两周|\b(?:two|2)\s+weeks?\b|\bfortnight\b)", 10),
+    (r"(中线|中期|\bmedium[- ]term\b)", 20),
+    (r"(一个月|1个月|本月|未来一个月|\b(?:one|1|a)\s+month\b|\bthis month\b|\bnext month\b)", 20),
+    (r"(一季度|一个季度|1个季度|三个月|3个月|\b(?:one|1|a)\s+quarter\b|\bnext quarter\b|\b(?:three|3)\s+months?\b)", 60),
+    (r"(长线|长期|\blong[- ]term\b)", 60),
 ]
 
 # ---------------------------------------------------------------------------
-# Price levels
+# Price levels (Chinese + English)
 # ---------------------------------------------------------------------------
-UP_KW = r"(?:站稳|站上|成功站上|突破|上破|上穿|收复|有效突破)"
-DOWN_KW = r"(?:跌破|下破|失守|下穿|跌穿|击穿)"
-TARGET_UP_KW = r"(?:目标(?:位|价)?|上看|看到|看至|看高至|上冲|冲击|有望到|有望上冲|有望涨至)"
-TARGET_DOWN_KW = r"(?:下看|看向|看低至|下探|有望跌至|有望下探|有望跌到)"
-STOP_KW = r"(?:止损|止损位|止损价)"
-PULLBACK_KW = r"(?:回踩|回抽|回调|回落|回撤)"
+UP_KW = (r"(?:站稳|站上|成功站上|突破|上破|上穿|收复|有效突破"
+         r"|holds?(?:\s+above)?|breaks? above|breakout above|closes? above|reclaims?|clears?|above)")
+DOWN_KW = (r"(?:跌破|下破|失守|下穿|跌穿|击穿"
+           r"|breaks? below|closes? below|loses?|drops? below|falls? below|below)")
+TARGET_UP_KW = (r"(?:目标(?:位|价)?|上看|看到|看至|看高至|上冲|冲击|有望到|有望上冲|有望涨至"
+                r"|targets?(?: of)?|targeting|upside to|sees?|eyes|looking for|up to|towards?|heads? to)")
+TARGET_DOWN_KW = (r"(?:下看|看向|看低至|下探|有望跌至|有望下探|有望跌到"
+                  r"|downside to|down to|falls? to|drops? to)")
+STOP_KW = r"(?:止损|止损位|止损价|stop[- ]?loss|stops?)"
+PULLBACK_KW = (r"(?:回踩|回抽|回调|回落|回撤"
+               r"|pullback|pull back|retrace(?:ment)?|dip|retreat)")
 
 NUM = r"(\d+(?:\.\d+)?)"
 RANGE_SEP = r"(?:-|~|到|至|—)"
 
 # Tokens that mark a sentence as referring to a price level rather than a date.
-LEVEL_HINT = re.compile(r"(?:元|点|附近|上方|下方|以上|以下|之上|之下)")
+LEVEL_HINT = re.compile(
+    r"(?:元|点|附近|上方|下方|以上|以下|之上|之下|\bpts?\b|\bpoints?\b|\babove\b|\bbelow\b|\barea\b)",
+    re.IGNORECASE,
+)
+
+# Connector words between a keyword and its number, e.g. "targets of 4100".
+CONNECTOR = r"\s*(?:在|到|至|于|位|at|of|to|is|around|near|the)?\s*"
+
+
+def _is_ascii(word: str) -> bool:
+    return word.isascii()
+
+
+def _match_starts(text: str, word: str):
+    """Yield match start offsets. ASCII words match on word boundaries."""
+    if _is_ascii(word):
+        for m in re.finditer(r"\b" + re.escape(word) + r"\b", text, re.IGNORECASE):
+            yield m.start()
+    else:
+        idx = text.find(word)
+        while idx >= 0:
+            yield idx
+            idx = text.find(word, idx + 1)
+
+
+def _is_negated(text: str, start: int, word: str) -> bool:
+    prefix = text[max(0, start - 24):start]
+    if _is_ascii(word):
+        return bool(EN_NEGATION_PAT.search(prefix))
+    return any(prefix.endswith(neg) for neg in NEGATIONS)
+
+
+def _has_word(text: str, word: str) -> bool:
+    """True if ``word`` occurs; ASCII words must be whole words."""
+    return next(_match_starts(text, word), None) is not None
 
 
 def find_instrument(text):
     """Return ``{raw, symbol, exchange, contract, mapping_rule}`` or None."""
     for name, symbol, exchange in INSTRUMENTS:
-        idx = text.find(name)
-        if idx < 0:
+        starts = list(_match_starts(text, name))
+        if not starts:
             continue
-        end = idx + len(name)
+        start = starts[0]
+        end = start + len(name)
+        if _is_ascii(name):
+            return _instrument_payload(name, symbol, exchange, text, end)
         # Guard against substring false positives inside a longer product name.
         longer = [n for n, _, _ in INSTRUMENTS if n != name and name in n]
-        if any(n in text and n != name and idx >= text.find(n) and end <= text.find(n) + len(n) for n in longer):
+        if any(n in text and n != name and start >= text.find(n) and end <= text.find(n) + len(n) for n in longer):
             continue
         return _instrument_payload(name, symbol, exchange, text, end)
 
@@ -158,17 +259,21 @@ def find_direction(text):
     """Return ``(direction, matched_word, negated)``.
 
     Explicit long/short words win. Negation directly before the word flips it.
+    English words match on word boundaries, so ``long`` does not fire inside
+    ``longer`` and ``short`` does not fire inside ``shortage``.
     """
     for words, label in ((SHORT_WORDS, "short"), (LONG_WORDS, "long")):
+        best = None
         for word in words:
-            idx = text.find(word)
-            if idx < 0:
-                continue
-            prefix = text[max(0, idx - 3): idx]
-            negated = any(prefix.endswith(neg) for neg in NEGATIONS)
-            return label, word, negated
+            for start in _match_starts(text, word):
+                if best is None or start < best[0]:
+                    best = (start, word)
+                break
+        if best is not None:
+            start, word = best
+            return label, word, _is_negated(text, start, word)
     for word in NEUTRAL_WORDS:
-        if word in text:
+        if next(_match_starts(text, word), None) is not None:
             return "neutral", word, False
     return None, None, False
 
@@ -204,34 +309,39 @@ def parse_levels(text):
     }
 
     up = _first([
-        TARGET_UP_KW + r"\s*(?:在|到|至|位)?\s*" + NUM,
+        TARGET_UP_KW + CONNECTOR + NUM,
         NUM + r"\s*(?:目标位|目标价)",
         r"目标\s*" + NUM,
         r"上看\s*" + NUM,
     ], text)
     down = _first([
-        TARGET_DOWN_KW + r"\s*(?:到|至|位)?\s*" + NUM,
+        TARGET_DOWN_KW + CONNECTOR + NUM,
         r"目标\s*" + NUM + r"\s*(?:下方|以下)",
     ], text)
     out["target_up"] = up
     out["target_down"] = down
-    # A bare "目标 3700" is direction-neutral: it is attributed by the opinion's
-    # direction in extract_rule(), never guessed here.
-    out["target_any"] = _first([r"目标\s*(?:位|价)?\s*(?:在|到|至)?\s*" + NUM], text)
+    # A bare "目标 3700" / "target 3700" is direction-neutral: it is attributed by
+    # the opinion's direction in extract_rule(), never guessed here.
+    out["target_any"] = _first([
+        r"目标\s*(?:位|价)?\s*(?:在|到|至)?" + CONNECTOR + NUM,
+        r"\btargets?\b" + CONNECTOR + NUM,
+        r"\b(?:sees?|eyes?|looking for|upside to)\b" + CONNECTOR + NUM,
+    ], text)
 
     out["up"] = _first([
-        UP_KW + r"\s*(?:在|到|至|于)?\s*" + NUM,
+        UP_KW + CONNECTOR + NUM,
         NUM + r"\s*(?:上方|以上|之上)",
         r"站上\s*" + NUM,
     ], text)
     out["down"] = _first([
-        DOWN_KW + r"\s*(?:在|到|至|于)?\s*" + NUM,
+        DOWN_KW + CONNECTOR + NUM,
         NUM + r"\s*(?:下方|以下|之下)",
     ], text)
 
     out["stop"] = _first([
-        STOP_KW + r"\s*(?:位|价)?\s*(?:在|于|设|放到|放在|设在|放在)?\s*" + NUM,
+        STOP_KW + r"\s*(?:位|价)?(?:\s*(?:在|于|设|放到|放在|设在))?" + CONNECTOR + NUM,
         NUM + r"\s*(?:止损|作为止损)",
+        r"\bstop(?:s|ped)?\b[^.\d]{0,18}" + NUM,
     ], text)
     return out
 

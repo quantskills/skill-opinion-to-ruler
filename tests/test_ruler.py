@@ -423,3 +423,94 @@ def test_end_to_end_report_shape(opinions, labels):
     assert all("edge" in t for t in bt["trades"])
     report = annotate.score(labels)
     assert report["overall_exact_match"] >= 0.9
+
+# ---------------------------------------------------------------------------
+# English support
+# ---------------------------------------------------------------------------
+def _one(text, apply_defaults=True):
+    res = run({"text": text, "published_at": "2024-01-05T08:30:00+08:00"},
+              {"apply_defaults": apply_defaults})
+    doc = res["documents"][0]
+    return (doc["rules"] + doc["unruleable"])[0]
+
+
+def test_english_full_rule():
+    rule = _one("Rebar holds 3850, sees 4100 in two weeks, wrong below 3780.")
+    assert rule["instrument"]["symbol"] == "RB"
+    assert rule["direction"] == "long"
+    assert rule["entry_trigger"]["expr"] == "close > 3850"
+    assert rule["stop_loss"]["expr"] == "close < 3780"
+    assert rule["exit_rule"]["expr"] == "close >= 4100"
+    assert rule["horizon"]["value"] == 10
+    assert rule["testability"] == "full"
+
+
+def test_english_short_direction():
+    rule = _one("Iron ore is bearish short-term, breaks below 840, stop at 880.")
+    assert rule["instrument"]["symbol"] == "I"
+    assert rule["direction"] == "short"
+    assert rule["entry_trigger"]["expr"] == "close < 840"
+    assert rule["stop_loss"]["expr"] == "close > 880"
+
+
+def test_english_target_and_stop():
+    rule = _one("Copper looks bullish, target 78000, stop loss 75000.")
+    assert rule["instrument"]["symbol"] == "CU"
+    assert rule["exit_rule"]["expr"] == "close >= 78000"
+    assert rule["stop_loss"]["expr"] == "close < 75000"
+
+
+def test_english_neutral():
+    rule = _one("Crude oil neutral, wait and see.")
+    assert rule["testability"] == "neutral"
+    assert rule["instrument"]["symbol"] == "SC"
+
+
+def test_english_macro_is_unruleable():
+    rule = _one("Commodities should do better next year.")
+    assert rule["testability"] == "none"
+
+
+def test_english_negation_flips_direction():
+    rule = _one("Rebar is not bearish, could turn bullish above 3900.")
+    assert rule["direction"] == "long"
+    assert any("negation" in a["issue"] for a in rule["ambiguity"])
+
+
+def test_english_horizon_variants():
+    assert _one("Gold targets 600 over the next month, stop below 560.")["horizon"]["value"] == 20
+    assert _one("Iron ore targeting 900 in three months, stop 800.")["horizon"]["value"] == 60
+    assert _one("Rebar bullish, target 4100 next week, stop 3800.")["horizon"]["value"] == 5
+
+
+def test_english_pullback_entry():
+    rule = _one("Rebar: expects a pullback to 3800 as a long entry, target 4300, stop 3700.")
+    assert rule["entry_trigger"]["expr"] == "close <= 3800"
+
+
+def test_ascii_instrument_respects_word_boundaries():
+    # "longer" must not match "long"; "corn" must not match inside "corner".
+    res = run({"text": "Gold is not longer a bull market.", "published_at": "2024-01-05T08:30:00+08:00"})
+    doc = res["documents"][0]
+    for rule in doc["rules"] + doc["unruleable"]:
+        assert rule["direction"] != "long"
+    assert _one("Corner shop chatter, no view.")["instrument"] is None
+
+
+def test_english_decimal_not_split():
+    rule = _one("Copper targets 78000.5 in two weeks, stop 75000.")
+    assert rule["exit_rule"]["expr"] == "close >= 78000.5"
+
+
+def test_mixed_language_sentence():
+    rule = _one("Rebar bullish 看多, target 4100 in two weeks, stop 3800.")
+    assert rule["instrument"]["symbol"] == "RB"
+    assert rule["direction"] == "long"
+
+
+def test_english_labelled_sample_scores_perfectly():
+    with open(os.path.join(FIXTURES, "labels_en.json"), encoding="utf-8") as fh:
+        report = annotate.score(json.load(fh))
+    assert report["overall_exact_match"] == 1.0
+    for field, m in report["fields"].items():
+        assert m["exact_match_rate"] == 1.0, field

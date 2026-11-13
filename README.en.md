@@ -136,7 +136,9 @@ The two data modes disagree (edge negative in A, positive in B), which is precis
 
 ## Known limitations
 
-- Extraction is lexicon + regex, not an LLM. It covers common futures phrasing; irony, long-range anaphora and unusual metaphor fall to `none` or raise `ambiguity`.
+- Extraction is lexicon + regex, not an LLM. **Chinese and English are both supported, including mixed sentences.** It covers common futures phrasing; irony, long-range anaphora and unusual metaphor fall to `none` or raise `ambiguity`.
+- English matching is word-boundary aware (`long` does not fire inside `longer`), but a sentence containing both long and short wording is still flagged as ambiguous.
+- The lexicon is an explicit whitelist. New languages or new products require edits to `scripts/common.py`; the logic does not change.
 - The instrument alias table is a whitelist; unknown products are not guessed.
 - Cross-rule capital competition is not modelled; rules are evaluated independently.
 - The 12-trade threshold is conservative. Passing it does not imply statistical power.

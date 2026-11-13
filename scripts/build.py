@@ -23,6 +23,10 @@ from typing import Any, Dict, List, Optional
 
 try:  # package import
     from .common import (  # type: ignore
+        LONG_WORDS,
+        PULLBACK_KW,
+        SHORT_WORDS,
+        _has_word,
         clamp_text,
         find_direction,
         find_horizon,
@@ -32,6 +36,10 @@ try:  # package import
 except ImportError:  # direct execution (also under ``python -I``)
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     from common import (  # type: ignore
+        LONG_WORDS,
+        PULLBACK_KW,
+        SHORT_WORDS,
+        _has_word,
         clamp_text,
         find_direction,
         find_horizon,
@@ -39,7 +47,7 @@ except ImportError:  # direct execution (also under ``python -I``)
         parse_levels,
     )
 
-VERSION = "0.1.0"
+VERSION = "0.2.0"
 
 # ---------------------------------------------------------------------------
 # Frozen default policy
@@ -57,6 +65,18 @@ DEFAULT_POLICY: Dict[str, Any] = {
 SCHEMA_VERSION = "rule-v1"
 
 _SENT_SPLIT = re.compile(r"(?<=[。；;！!？?])|\n+")
+
+# Decimal point must not split a sentence ("targets 4100.5").
+_SENT_SPLIT_EN = re.compile(r"(?<=[.;!?])\s+(?=[A-Z0-9\"'(])|\n+")
+
+
+def _split_sentences(text: str) -> List[str]:
+    """Split on Chinese and English sentence terminators, keeping decimals intact."""
+    if re.search(r"[一-鿿]", text):
+        parts = [p.strip() for p in _SENT_SPLIT.split(text) if p and p.strip()]
+    else:
+        parts = [p.strip() for p in _SENT_SPLIT_EN.split(text) if p and p.strip()]
+    return parts or [text.strip()]
 
 
 # ---------------------------------------------------------------------------
@@ -124,7 +144,11 @@ def _validate_doc(doc: Dict[str, Any]) -> None:
 # 2. Extraction
 # ---------------------------------------------------------------------------
 def _split_sentences(text: str) -> List[str]:
-    parts = [p.strip() for p in _SENT_SPLIT.split(text) if p and p.strip()]
+    """Split on Chinese and English sentence terminators, keeping decimals intact."""
+    if re.search(r"[一-鿿]", text):
+        parts = [p.strip() for p in _SENT_SPLIT.split(text) if p and p.strip()]
+    else:
+        parts = [p.strip() for p in _SENT_SPLIT_EN.split(text) if p and p.strip()]
     return parts or [text.strip()]
 
 
@@ -173,8 +197,8 @@ def extract_rule(sentence: str, context: Optional[Dict[str, Any]] = None) -> Dic
     levels = parse_levels(text)
     direction, word, negated, inferred = _resolve_direction(text, levels)
 
-    has_long = any(w in text for w in ("看多", "做多", "买入", "多单", "看涨", "偏多"))
-    has_short = any(w in text for w in ("看空", "做空", "卖出", "空单", "看跌", "偏空"))
+    has_long = any(_has_word(text, w) for w in LONG_WORDS)
+    has_short = any(_has_word(text, w) for w in SHORT_WORDS)
     if has_long and has_short:
         notes.append({"field": "direction", "issue": "both long and short wording in one sentence"})
     if negated:
@@ -185,7 +209,11 @@ def extract_rule(sentence: str, context: Optional[Dict[str, Any]] = None) -> Dic
         )
 
     entry_trigger = None
-    pullback = re.search(r"(?:回踩|回抽|回调|回落|回撤)\s*(?:到|至|在)?\s*(\d+(?:\.\d+)?)", text)
+    pullback = re.search(
+        PULLBACK_KW + r"(?:\s*(?:到|至|在|at|to|around|near))?\s*(\d+(?:\.\d+)?)",
+        text,
+        re.IGNORECASE,
+    )
     if direction == "long":
         level = levels["up"]
         if level:

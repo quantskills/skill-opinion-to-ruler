@@ -19,6 +19,7 @@
 | 对应行情 | `load_bars`，panda_data 或 CSV |
 | 费用 | `config` 内的 `commission_bps` / `slippage_bps`，默认 3bp + 2bp 双边 |
 | 覆盖沉默/反转/错误观点 | 标注样本必须包含 `neutral`、否定翻转、以及事后被证明错误的观点 |
+| 语言覆盖 | 中文与英文各一份标注集（`labels.json` / `labels_en.json`），均需 exact-match 1.00 |
 
 「错误观点」的检查方式：标注文件里应存在方向最终被行情证伪的样本。当前 fixture 的 16 条样本中，`op-002`、`op-008`、`op-009`、`op-012`、`op-015` 均以空头规则入场并在单边上涨区间运行，属于被证伪的一类；`op-005`、`op-016` 是沉默样本；`op-004` 是否定词反转样本。
 
@@ -86,6 +87,7 @@ def decide_verdict(edge, trades, min_trades=12):
 cd skill-opinion-to-ruler
 python3 scripts/build.py
 python3 scripts/annotate.py tests/fixtures/labels.json
+python3 scripts/annotate.py tests/fixtures/labels_en.json
 python3 scripts/evaluate.py --fixture
 python3 -m pytest tests/ -v
 ```
