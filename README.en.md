@@ -116,10 +116,12 @@ Measured on two datasets. The divergence between them is exactly what this skill
 | Per-field exact match | 1.00 on all 7 fields |
 | Trades simulated | 12 (meets the 12-trade threshold) |
 | Mean net return | −0.0082, win rate 0.50 |
-| Paired edge vs hold | +0.0162, CI [0.0021, 0.0328] |
+| Paired edge vs hold | +0.0122, CI [−0.0045, 0.0285] |
 | Verdict | `inconclusive` |
 
-**Reading these numbers.** The paired-edge CI excludes zero and points positive — but only 10 trades are pairable (2 more lack a baseline), and the sample is 16 hand-written fixture opinions, not a real single source. That is below the sample size needed to conclude, so the verdict stays `inconclusive`. Mean net return is negative while the edge is positive: these opinions lose money, they just lose less than holding.
+**Reading these numbers.** The paired edge is positive on average, but the CI straddles zero and the 12 trades split evenly between wins and losses. Mean net return is negative while the edge is positive: these rules lose money, they just lose less than holding. The sample only just reaches the threshold; it is not evidence that the opinions work.
+
+> **Correction note:** versions up to 0.2.0 reported an edge of `+0.0162, CI [0.0021, 0.0328]`. That figure was defective — the baseline used each rule's own exit date, which made **every long rule's edge exactly zero**. The baseline now holds for the rule's pre-declared horizon instead. The table above is the corrected result, and a regression test guards the failure.
 
 The two data modes disagree (edge negative in A, positive in B), which is precisely why synthetic bars cannot count as evidence. A citable conclusion needs real, timestamped, single-source opinions with a much larger sample.
 

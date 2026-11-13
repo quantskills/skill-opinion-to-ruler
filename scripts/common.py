@@ -313,6 +313,8 @@ def parse_levels(text):
         NUM + r"\s*(?:目标位|目标价)",
         r"目标\s*" + NUM,
         r"上看\s*" + NUM,
+        # Bare "看 4100" / "看至4100": a target verb directly followed by a number.
+        r"看(?:到|至|高至)?\s*" + NUM,
     ], text)
     down = _first([
         TARGET_DOWN_KW + CONNECTOR + NUM,

@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: skill-opinion-to-ruler
   description: Extract testable trading rules from subjective market opinions. Maps free-form text into instrument, direction, entry trigger, horizon, stop loss and exit rule; validates extraction against a human-labelled sample; evaluates cost-adjusted results against a paired buy-and-hold baseline.
-  version: 0.2.0
+  version: 0.2.1
 
 x-skill-info:
   name: skill-opinion-to-ruler

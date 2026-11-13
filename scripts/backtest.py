@@ -137,10 +137,15 @@ def simulate_rule(rule: Dict[str, Any], bars: Sequence[Dict[str, Any]],
     entry_price = window[fill_idx]["open"] or window[fill_idx]["close"]
 
     # ---- exit ------------------------------------------------------------
+    # The horizon is fixed in advance: the baseline is measured over exactly
+    # this window, and the rule's own stop/target can only end it earlier.
+    horizon_idx = min(fill_idx + hold_days - 1, len(window) - 1)
+    horizon_end_date = window[horizon_idx]["date"]
+
     exit_idx = None
     exit_reason = None
     last_check = fill_idx
-    for i in range(fill_idx, len(window)):
+    for i in range(fill_idx, horizon_idx + 1):
         bar = window[i]
         last_check = i
         if stop_cond and _hit(*stop_cond, bar["close"]):
@@ -149,7 +154,7 @@ def simulate_rule(rule: Dict[str, Any], bars: Sequence[Dict[str, Any]],
         if exit_cond and _hit(*exit_cond, bar["close"]):
             exit_idx, exit_reason = i, "target"
             break
-        if i - fill_idx >= hold_days - 1:
+        if i >= horizon_idx:
             exit_idx, exit_reason = i, "horizon"
             break
 
@@ -170,6 +175,8 @@ def simulate_rule(rule: Dict[str, Any], bars: Sequence[Dict[str, Any]],
         "status": "traded",
         "entry_date": window[fill_idx]["date"],
         "exit_date": window[exit_idx]["date"],
+        "horizon_end_date": horizon_end_date,
+        "horizon_end_price": window[horizon_idx]["close"],
         "entry_price": entry_price,
         "exit_price": exit_price,
         "held_bars": held,
@@ -183,13 +190,20 @@ def simulate_rule(rule: Dict[str, Any], bars: Sequence[Dict[str, Any]],
     }
 
 
-def baseline_return(bars: Sequence[Dict[str, Any]], entry_date: str, exit_date: str,
+def baseline_return(bars: Sequence[Dict[str, Any]], entry_date: str, horiz_end_date: str,
                     cost_bps: float = 3.0, slippage_bps: float = 2.0) -> Optional[float]:
-    """Paired long-hold return over the identical dates."""
+    """Paired long-hold return over the rule's *horizon*, not its actual exit.
+
+    Using the rule's own exit date would make the baseline identical to a long
+    trade by construction (same entry, same exit, same costs), so ``edge`` would
+    be exactly zero for every long rule. The simple baseline is instead "hold
+    long for the stated horizon": that is what a trader with no opinion would
+    have done, and it lets an early stop or target show up as a real difference.
+    """
     by_date = {b["date"]: i for i, b in enumerate(bars)}
-    if entry_date not in by_date or exit_date not in by_date:
+    if entry_date not in by_date or horiz_end_date not in by_date:
         return None
-    i0, i1 = by_date[entry_date], by_date[exit_date]
+    i0, i1 = by_date[entry_date], by_date[horiz_end_date]
     if i1 <= i0:
         return None
     gross = bars[i1]["close"] / bars[i0]["open"] - 1.0
@@ -262,7 +276,8 @@ def evaluate(rules: Sequence[Dict[str, Any]], bars_by_symbol: Dict[str, List[Dic
             skips.append({"rule_id": record["rule_id"], "reason": record["reason"]})
             continue
         if baseline == "hold":
-            base = baseline_return(bars, record["entry_date"], record["exit_date"], cost_bps, slippage_bps)
+            base = baseline_return(bars, record["entry_date"], record["horizon_end_date"],
+                                   cost_bps, slippage_bps)
             record["baseline_return"] = None if base is None else round(base, 6)
             record["edge"] = None if base is None else round(record["net_return"] - base, 6)
         else:

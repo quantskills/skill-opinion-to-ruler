@@ -355,6 +355,19 @@ def test_baseline_hold_is_paired(bars):
     assert trade["edge"] == pytest.approx(trade["net_return"] - trade["baseline_return"], abs=1e-6)
 
 
+def test_baseline_spans_the_horizon_not_the_actual_exit(bars):
+    """Regression: a long rule that exits early must still be compared with a
+    full-horizon hold. Measuring the baseline at the rule's own exit date makes
+    it identical to the trade, so every long edge is exactly zero."""
+    rule = _rule(published_at="20240110", stop_loss={"expr": "close > 0"},
+                 exit_rule={"expr": "close >= 99999"}, horizon={"value": 20})
+    res = evaluate([rule], {"RB": bars}, baseline="hold")
+    trade = res["trades"][0]
+    assert trade["exit_reason"] == "stop_loss"
+    assert trade["horizon_end_date"] > trade["exit_date"]
+    assert abs(trade["edge"]) > 1e-9
+
+
 def test_cash_baseline_is_zero():
     bars = load_csv(os.path.join(FIXTURES, "bars_RB.csv"))
     res = evaluate([_rule(published_at="20240110")], {"RB": bars}, baseline="cash")
@@ -514,3 +527,20 @@ def test_english_labelled_sample_scores_perfectly():
     assert report["overall_exact_match"] == 1.0
     for field, m in report["fields"].items():
         assert m["exact_match_rate"] == 1.0, field
+
+
+def test_bare_target_verb_is_recognised():
+    """「未来两周看4100」— a target verb directly followed by a number."""
+    rule = _one("螺纹钢主力站稳3850，未来两周看4100，跌破3780止损。")
+    assert rule["exit_rule"]["expr"] == "close >= 4100"
+    assert rule["direction"] == "long"
+    assert rule["testability"] == "full"
+
+
+def test_a_share_news_paragraph_is_not_ruleable():
+    """Market-recap prose (no opinion, no condition) must fall to none, not be guessed."""
+    text = ("算力芯片延续此前强势，华东重机一字涨停，旋极信息、大胜达、摩尔线程、天普股份、"
+            "寒武纪涨超4%。消息面上，阿里巴巴宣布分拆旗下AI芯片公司平头哥赴港独立上市。")
+    res = run({"text": text, "published_at": "2026-11-13T10:00:00+08:00"}, {"apply_defaults": True})
+    assert res["summary"]["rules_total"] == 0
+    assert res["summary"]["unruleable"] >= 1

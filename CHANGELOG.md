@@ -6,6 +6,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [0.2.1] — 2026-11-13
+
+### Fixed
+
+- **配对基线口径错误（影响所有多头结论）**：`baseline_return` 原先用规则自己的**出场日期**计算持有收益，导致多头规则的基线与交易完全重合，`edge` 恒等于 0。实测 12 笔真实成交中，6 笔多头 edge 全为 `±0.0000`，掩盖了真实差异。
+  - 修复：基线改为按**事先固定的期限窗口**（`entry_date` → `horizon_end_date`）计算；规则的止损/止盈只能让交易提前结束，不能改变基线。
+  - 交易记录新增 `horizon_end_date` / `horizon_end_price`，使"实际出场"与"期限终点"可核对。
+  - 修正后真实数据结果：edge `+0.0122`，CI `[−0.0045, 0.0285]`（原误报 `+0.0162`，CI `[0.0021, 0.0328]`）。
+- **「两周看4100」抽不出止盈位**：目标位词典不认光秃秃的 `看+数字`，已补 `看(到|至|高至)?NUM`。
+- **`references/validation.md` 存在未核对的断言**：曾把 5 条空头样本一律描述为"已被证伪"，实际其中 4 条盈利。已按真实回测输出改为盈亏对照表，并注明该判定依赖所选行情区间。
+
+### Added
+
+- 回归测试：`test_baseline_spans_the_horizon_not_the_actual_exit`、`test_bare_target_verb_is_recognised`、`test_a_share_news_paragraph_is_not_ruleable`。测试总数 65。
+
+---
+
 ## [0.2.0] — 2026-11-13
 
 ### Added
