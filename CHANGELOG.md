@@ -6,6 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [0.2.2] — 2026-11-13
+
+### Fixed
+
+- **「涨到 / 跌到」不识别为目标位**：形如「螺纹钢涨到4100」「铁矿石跌到800」的表述原先整条落 `none`。已补目标词典：中英文各 4–6 个变体（涨到/涨至/升至/反弹至，跌到/跌至/降至/回落至，rises to / rallies to / climbs to / falls to / drops to / slides to）。
+  - 修复后：「螺纹钢涨到4100，跌破3850止损」→ `partial RB long`，`exit close >= 4100`，`stop close < 3850`。
+
+### Added
+
+- `tests/test_ruler.py` 新增 2 个用例：涨到/跌到目标识别、A股名称无符号的行为固化。测试总数 67。
+
+### Clarified
+
+- **A股名称不在品种白名单内，这是既有设计而非缺陷**。实测 `中科星图` = `688568.SH`、`寒武纪` = `688256.SH`，抽取层能把规则完整解出（方向、目标、止损、期限），但 `instrument` 为空 → `testability = none`。A股需要单独的代码索引与 T+1 / 涨跌停 / 停牌回测层，见 README「已知局限」。
+
 ## [0.2.1] — 2026-11-13
 
 ### Fixed

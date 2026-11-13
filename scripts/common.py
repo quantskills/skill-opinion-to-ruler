@@ -163,9 +163,12 @@ UP_KW = (r"(?:站稳|站上|成功站上|突破|上破|上穿|收复|有效突�
 DOWN_KW = (r"(?:跌破|下破|失守|下穿|跌穿|击穿"
            r"|breaks? below|closes? below|loses?|drops? below|falls? below|below)")
 TARGET_UP_KW = (r"(?:目标(?:位|价)?|上看|看到|看至|看高至|上冲|冲击|有望到|有望上冲|有望涨至"
-                r"|targets?(?: of)?|targeting|upside to|sees?|eyes|looking for|up to|towards?|heads? to)")
+                r"|涨到|涨至|升至|升到|走高至|反弹至|反弹到"
+                r"|targets?(?: of)?|targeting|upside to|sees?|eyes|looking for|up to|towards?|heads? to"
+                r"|rises? to|rallies? to|climbs? to)")
 TARGET_DOWN_KW = (r"(?:下看|看向|看低至|下探|有望跌至|有望下探|有望跌到"
-                  r"|downside to|down to|falls? to|drops? to)")
+                  r"|跌到|跌至|降至|降到|回落至|回调至"
+                  r"|downside to|down to|falls? to|drops? to|slides? to)")
 STOP_KW = r"(?:止损|止损位|止损价|stop[- ]?loss|stops?)"
 PULLBACK_KW = (r"(?:回踩|回抽|回调|回落|回撤"
                r"|pullback|pull back|retrace(?:ment)?|dip|retreat)")

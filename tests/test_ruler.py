@@ -544,3 +544,25 @@ def test_a_share_news_paragraph_is_not_ruleable():
     res = run({"text": text, "published_at": "2026-11-13T10:00:00+08:00"}, {"apply_defaults": True})
     assert res["summary"]["rules_total"] == 0
     assert res["summary"]["unruleable"] >= 1
+
+
+def test_rise_to_and_fall_to_are_targets():
+    up = _one("螺纹钢涨到4100，跌破3850止损")
+    assert up["direction"] == "long"
+    assert up["exit_rule"]["expr"] == "close >= 4100"
+    assert up["stop_loss"]["expr"] == "close < 3850"
+    down = _one("铁矿石跌到800，止损850")
+    assert down["direction"] == "short"
+    assert down["exit_rule"]["expr"] == "close <= 800"
+
+
+def test_a_share_name_resolves_but_has_no_symbol_by_design():
+    """A-share names are outside the futures alias table: rules extract, symbol is None."""
+    res = run({"text": "中科星图 涨到23.7", "published_at": "2026-11-13T10:00:00+08:00"},
+              {"apply_defaults": True})
+    doc = res["documents"][0]
+    item = (doc["rules"] + doc["unruleable"])[0]
+    assert item["instrument"] is None
+    assert item["direction"] == "long"
+    assert item["exit_rule"]["expr"] == "close >= 23.7"
+    assert item["testability"] == "none"
