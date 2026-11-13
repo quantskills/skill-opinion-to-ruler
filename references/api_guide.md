@@ -97,4 +97,11 @@ print(loaded["source"])   # "csv"
 | 不支持 | 表外品种、外盘合约、期权、股票（本版本） |
 | 频率 | 日线，收盘口径 |
 
-期货模拟赛核验时，若某品种或接口不可用，应在报告 `applicability.out_of_scope` 中明确写出等价回放范围，而不是替换成别的品种继续跑。
+期货模拟赛核验时，若某品种或接口不可用，应在**开跑之前**生成 `output/scope_declaration.json` 写死等价回放范围，再执行回测，而不是跑完再挑范围。`scripts/scope.py` 实现了这个顺序：
+
+1. `declare_scope()` 只读输入（观点、参数、冻结配置），看不到任何成交；
+2. 声明落盘并计算 `scope_hash`；
+3. 回测执行；
+4. `verify_scope()` 比对"声明的范围"与"实际发生的范围"，不符记为 violation。
+
+报告中 `scope_verification.honoured` 为 `false` 时，结论作废。

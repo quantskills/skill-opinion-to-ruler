@@ -139,7 +139,9 @@ print(bt["verdict"], bt["edge"])
 | `backtest.edge` | 配对 edge 的均值与 bootstrap CI |
 | `backtest.verdict` | 三值判定 |
 | `value_assessment` | 改变了什么决策、作用多大 |
-| `applicability` | 覆盖范围、不在范围、结论失效条件 |
+| `applicability` | 覆盖范围、不在范围、结论失效条件（**由本次运行的 `scope` 生成**，不是通用模板） |
+| `scope_declaration` | 开跑前冻结的范围声明，含 `scope_hash`、声明品种、未映射规则 |
+| `scope_verification` | 声明范围与实际成交范围的比对结果，`honoured=false` 时结论作废 |
 
 ## 验收要求
 

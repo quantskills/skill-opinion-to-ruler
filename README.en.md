@@ -109,15 +109,19 @@ Measured on two datasets. The divergence between them is exactly what this skill
 | Paired edge vs hold | −0.0032, CI [−0.0096, 0.0] |
 | Verdict | `inconclusive` |
 
-### B. panda_data real bars (RB / I, full-year 2024, 242 daily bars)
+### B. panda_data real bars (RB / I)
 
 | Item | Result |
 |---|---|
+| Bars requested | 2024-01-02 – 2024-12-31, 242 daily bars |
+| **Actual trade span** | **2024-01-09 – 2024-03-12** (opinions only cover early Jan to early Feb; each trade ends at its own horizon) |
 | Per-field exact match | 1.00 on all 7 fields |
 | Trades simulated | 12 (meets the 12-trade threshold) |
 | Mean net return | −0.0082, win rate 0.50 |
 | Paired edge vs hold | +0.0122, CI [−0.0045, 0.0285] |
 | Verdict | `inconclusive` |
+
+> **On "long-horizon testing":** bars span a full year, but **trades only fall within about two months**, because the 16 opinions are dated Jan–Feb 2024. That is not a multi-regime long-horizon test; a claim of that kind needs a sample spanning much longer. This section previously said "full-year 2024", which read as if trades covered the year. Corrected.
 
 **Reading these numbers.** The paired edge is positive on average, but the CI straddles zero and the 12 trades split evenly between wins and losses. Mean net return is negative while the edge is positive: these rules lose money, they just lose less than holding. The sample only just reaches the threshold; it is not evidence that the opinions work.
 

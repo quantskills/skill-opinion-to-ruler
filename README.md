@@ -74,7 +74,7 @@ python3 scripts/evaluate.py --panda --start 20240101 --end 20241231
 python3 -m pytest tests/ -v
 ```
 
-`evaluate.py` 会把完整报告写到 `output/frozen_baseline.json`（已在 `.gitignore` 中）。
+`evaluate.py` 会先把范围声明写到 `output/scope_declaration.json`（**开跑前**），跑完再把完整报告写到 `output/frozen_baseline.json`。两者都在 `.gitignore` 中。
 
 ---
 
@@ -129,15 +129,19 @@ python3 -m pytest tests/ -v
 | 配对 edge vs 持有 | −0.0032，CI [−0.0096, 0.0] |
 | 判定 | `inconclusive` |
 
-### B. panda_data 真实行情（RB / I，2024 全年，242 根日线）
+### B. panda_data 真实行情（RB / I）
 
 | 项 | 结果 |
 |---|---|
+| 取数范围 | 2024-01-02 ～ 2024-12-31，242 根日线 |
+| **实际成交区间** | **2024-01-09 ～ 2024-03-12**（观点只覆盖 1 月初至 2 月初，每笔按各自期限结束） |
 | 抽取逐字段 exact-match | 7 个字段全部 1.00 |
 | 回测成交 | 12 笔（满 12 笔门槛） |
 | 规则净收益均值 | −0.0082，胜率 0.50 |
 | 配对 edge vs 持有 | +0.0122，CI [−0.0045, 0.0285] |
 | 判定 | `inconclusive` |
+
+> **关于"长期检验"**：取数跨全年，但**成交只落在约 2 个月内**，因为 16 条观点集中在 2024 年 1–2 月。这不足以称为跨行情周期的长期检验，样本需要覆盖更长的时间跨度才能下这类结论。README 此处曾写作"2024 全年"，容易被误读为全年都有成交，已更正。
 
 **怎么读这组数**：配对 edge 均值为正，但 CI 跨过 0，12 笔成交里盈亏各半。`mean net` 为负、`edge` 为正，说明这批规则自身是亏的，只是亏得比同期持有少。样本量只够到门槛，不构成"观点有效"的证据。
 

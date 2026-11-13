@@ -35,8 +35,10 @@ import annotate  # noqa: E402
 from backtest import applicability, evaluate, value_assessment  # noqa: E402
 from build import run  # noqa: E402
 from data_loader import DataUnavailable, credentials_source, load_bars  # noqa: E402
+from scope import declare_scope, verify_scope  # noqa: E402
 
 FIXTURE_DIR = os.path.join(ROOT, "tests", "fixtures")
+SCOPE_PATH = os.path.join(ROOT, "output", "scope_declaration.json")
 
 
 def _load_fixture(name: str) -> Dict[str, Any]:
@@ -73,6 +75,9 @@ def main(argv=None) -> int:
     parser.add_argument("--labels", default=os.path.join(FIXTURE_DIR, "labels.json"))
     parser.add_argument("--opinions", default=os.path.join(FIXTURE_DIR, "opinions.json"))
     parser.add_argument("--baseline-output", default=os.path.join(ROOT, "output", "frozen_baseline.json"))
+    parser.add_argument("--commission-bps", type=float, default=3.0)
+    parser.add_argument("--slippage-bps", type=float, default=2.0)
+    parser.add_argument("--min-trades", type=int, default=12)
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args(argv)
 
@@ -83,8 +88,28 @@ def main(argv=None) -> int:
     extracted = run(opinions, {"apply_defaults": True})
     rules = [r for d in extracted["documents"] for r in d["rules"]]
 
+    # ---- scope is declared BEFORE any bar is fetched or any trade is simulated
+    scope = declare_scope(
+        extracted,
+        data_mode="fixture" if args.fixture else "panda",
+        start=args.start,
+        end=args.end,
+        baseline="hold",
+        cost_bps=args.commission_bps,
+        slippage_bps=args.slippage_bps,
+        min_trades=args.min_trades,
+    )
+    os.makedirs(os.path.dirname(SCOPE_PATH), exist_ok=True)
+    with open(SCOPE_PATH, "w", encoding="utf-8") as fh:
+        json.dump(scope, fh, ensure_ascii=False, indent=2)
+    print(f"[scope] declared before run: {len(scope['declared_symbols'])} symbol(s) "
+          f"{scope['declared_symbols']} over {args.start}..{args.end}  hash={scope['scope_hash'][:12]}")
+
     bars_by_symbol = _bars_for(rules, args)
-    backtest = evaluate(rules, bars_by_symbol, baseline="hold")
+    backtest = evaluate(rules, bars_by_symbol, baseline="hold",
+                        cost_bps=args.commission_bps, slippage_bps=args.slippage_bps,
+                        min_trades=args.min_trades)
+    verification = verify_scope(scope, bars_by_symbol, backtest["trades"], backtest["skips"])
 
     labels_path = args.labels
     extraction_score = None
@@ -102,8 +127,11 @@ def main(argv=None) -> int:
             "accuracy": extraction_score,
         },
         "backtest": backtest,
+        "scope_declaration": scope,
+        "scope_verification": verification,
         "value_assessment": value_assessment(backtest),
-        "applicability": applicability(backtest, extracted["summary"]),
+        "applicability": applicability(backtest, extracted["summary"], scope=scope,
+                                       verification=verification),
     }
 
     os.makedirs(os.path.dirname(args.baseline_output), exist_ok=True)
@@ -124,6 +152,13 @@ def main(argv=None) -> int:
           f"maxDD: {m['max_drawdown']}")
     print(f"paired edge vs hold: {e['mean']}  CI [{e['ci_low']}, {e['ci_high']}]  n={e['n']}")
     print(f"verdict: {backtest['verdict'].upper()}")
+    if verification["violations"]:
+        print("SCOPE VIOLATIONS:")
+        for v in verification["violations"]:
+            print(f"  - {v}")
+    else:
+        print(f"scope honoured: {verification['symbols_traded']} traded, "
+              f"span {verification['trade_span']}")
     print(f"report: {args.baseline_output}")
     return 0
 

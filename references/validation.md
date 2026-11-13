@@ -56,7 +56,7 @@
 | 冻结基线对照 | `output/frozen_baseline.json`，`config_hash` 保证可比性 |
 | 输入输出索引 | `references/schema.md` 全字段表 |
 | 使用及失败边界 | `SKILL.md`「已知局限」+ `applicability` |
-| 交易执行部分可核验 | 日线回放；品种/接口不支持时写入 `out_of_scope` |
+| 交易执行部分可核验 | 日线回放；**开跑前**生成 `output/scope_declaration.json` 冻结等价回放范围，跑完由 `verify_scope` 比对 |
 
 ## 五、价值验收
 

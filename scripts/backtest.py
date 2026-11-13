@@ -259,7 +259,7 @@ def decide_verdict(edge: Dict[str, float], trades: int, min_trades: int = MIN_TR
 
 def evaluate(rules: Sequence[Dict[str, Any]], bars_by_symbol: Dict[str, List[Dict[str, Any]]],
              cost_bps: float = 3.0, slippage_bps: float = 2.0,
-             baseline: str = "hold") -> Dict[str, Any]:
+             baseline: str = "hold", min_trades: int = MIN_TRADES) -> Dict[str, Any]:
     """Run every rule and compare each trade with its paired baseline."""
     if baseline not in ("hold", "cash"):
         raise BacktestError("baseline must be 'hold' or 'cash'")
@@ -288,7 +288,7 @@ def evaluate(rules: Sequence[Dict[str, Any]], bars_by_symbol: Dict[str, List[Dic
     net = [t["net_return"] for t in trades]
     edges = [t["edge"] for t in trades if t["edge"] is not None]
     ci = _bootstrap_ci(edges)
-    verdict = decide_verdict(ci, len(edges))
+    verdict = decide_verdict(ci, len(edges), min_trades=min_trades)
 
     by_reason: Dict[str, int] = {}
     for t in trades:
@@ -298,6 +298,7 @@ def evaluate(rules: Sequence[Dict[str, Any]], bars_by_symbol: Dict[str, List[Dic
         "baseline": baseline,
         "cost_bps": cost_bps,
         "slippage_bps": slippage_bps,
+        "min_trades": min_trades,
         "trades": trades,
         "skips": skips,
         "metrics": {
@@ -352,23 +353,69 @@ def value_assessment(backtest: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def applicability(backtest: Dict[str, Any], coverage: Dict[str, Any]) -> Dict[str, Any]:
+def applicability(backtest: Dict[str, Any], coverage: Dict[str, Any],
+                  scope: Optional[Dict[str, Any]] = None,
+                  verification: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """Runtime applicability: where this *specific run* holds and where it stops.
+
+    When a pre-run ``scope`` is supplied, the in-scope/out-of-scope lists are
+    generated from what was declared, not from generic boilerplate. That is the
+    difference between a promise made in advance and a disclaimer written after
+    the numbers were seen.
+    """
+    min_trades = backtest.get("min_trades", MIN_TRADES)
+
+    if scope is None:
+        return {
+            "in_scope": [
+                "daily-close rules on futures products supported by the instrument alias table",
+                "rules whose horizon is expressed in trading days",
+                "evaluation on bars strictly after the opinion's publish date",
+            ],
+            "out_of_scope": [
+                "intraday entries, limit-order fills, auction mechanics",
+                "position sizing interactions across simultaneous rules",
+                "products absent from the alias table (they map to no symbol)",
+                "continuous-contract adjustment: segments are stitched at unadjusted prices, so a roll gap remains visible",
+            ],
+            "fails_when": [
+                "fewer than %d trades" % min_trades,
+                "the opinion has no numeric levels and no explicit direction",
+                "bars are missing for the mapped symbol",
+            ],
+            "coverage": coverage,
+        }
+
+    traded = (verification or {}).get("symbols_traded", [])
+    declared = scope["declared_symbols"]
+    span = (verification or {}).get("trade_span")
+    violations = (verification or {}).get("violations", [])
+
     return {
+        "declared_before_run": scope.get("declared_before_backtest", False),
+        "scope_hash": scope.get("scope_hash"),
         "in_scope": [
-            "daily-close rules on futures products supported by the instrument alias table",
-            "rules whose horizon is expressed in trading days",
-            "evaluation on bars strictly after the opinion's publish date",
+            f"symbols declared and traded: {', '.join(traded) or 'none'}",
+            f"declared evaluation window: {scope['date_range']['start']}..{scope['date_range']['end']}",
+            f"actual trade span: {span['first']}..{span['last']}" if span else "actual trade span: none",
+            f"data mode: {scope['data_mode']}",
         ],
         "out_of_scope": [
+            "futures simulation contest / live matching (this is daily bar replay)",
             "intraday entries, limit-order fills, auction mechanics",
-            "position sizing interactions across simultaneous rules",
-            "products absent from the alias table (they map to no symbol)",
-            "continuous-contract adjustment: segments are stitched at unadjusted prices, so a roll gap remains visible",
+            "position sizing across simultaneous rules",
+            f"products outside the declared list: {', '.join(declared) or 'none'}",
+            "roll adjustment (unadjusted dominant stitching is used)",
+            "rules with no mapped symbol: %d" % len(scope.get("unmapped_rules", [])),
         ],
+        "replay_equivalence": scope.get("replay_equivalence"),
+        "scope_honoured": (verification or {}).get("honoured"),
+        "scope_violations": violations,
         "fails_when": [
-            "fewer than %d trades" % MIN_TRADES,
+            f"fewer than {min_trades} closed trades",
             "the opinion has no numeric levels and no explicit direction",
-            "bars are missing for the mapped symbol",
+            "bars are missing for a declared symbol",
+            "a trade falls outside the declared window or symbol list",
         ],
         "coverage": coverage,
     }

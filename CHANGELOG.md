@@ -6,6 +6,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [0.3.0] — 2026-11-13
+
+### Added
+
+- **开跑前范围声明**（`scripts/scope.py`）：`declare_scope()` 只读输入生成 `output/scope_declaration.json` 并计算 `scope_hash`，**在任何成交发生之前**落盘。满足「品种或接口不支持时**事先**明确等价回放范围」。
+- **范围校验**：`verify_scope()` 比对声明与实际（品种、成交区间、未映射规则），不符写入 `violations`；`honoured=false` 时结论作废。
+- **运行时 applicability**：`applicability()` 在拿到 `scope` 时按本次运行生成，不再输出通用模板文本。新增 `replay_equivalence` 段，明确「本实现是日线回放，不是期货模拟赛撮合」，并列出等价成立的理由与失效情形。
+- CLI 新增 `--commission-bps` / `--slippage-bps` / `--min-trades`，成本与门槛进入声明与 `scope_hash`。
+- 新增 7 个测试（声明稳定性、未映射规则前置、越界检测、清白运行），总数 74。
+
+### Changed
+
+- **README 措辞更正**：B 组结果原写「2024 全年 242 根日线」，容易被读成全年都有成交。实际取数跨全年，但成交区间是 2024-01-09 ~ 2024-03-12。已改为分行列出「取数范围 / 实际成交区间」，并说明这不构成跨行情周期的长期检验。
+- `references/api_guide.md` 与 `references/validation.md` 同步改为「开跑前声明 + 跑完校验」。
+
+### Known gaps
+
+- 与**期货模拟赛**的差异已明确写入 `replay_equivalence.what_this_is_not`，但本版本仍未接入任何模拟赛平台；日线回放是等价替代的声明，不是模拟赛本身。
+- 观点样本仍是手写 fixture，不是真实的单一来源历史观点。
+
 ## [0.2.2] — 2026-11-13
 
 ### Fixed

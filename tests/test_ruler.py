@@ -566,3 +566,86 @@ def test_a_share_name_resolves_but_has_no_symbol_by_design():
     assert item["direction"] == "long"
     assert item["exit_rule"]["expr"] == "close >= 23.7"
     assert item["testability"] == "none"
+
+
+# ---------------------------------------------------------------------------
+# Pre-run scope declaration
+# ---------------------------------------------------------------------------
+import scope as scope_mod  # noqa: E402
+
+
+def _extracted():
+    res = run({"text": "螺纹钢站稳3850，两周看4100，跌破3780止损。",
+               "published_at": "2024-01-05T08:30:00+08:00"}, {"apply_defaults": True})
+    return res
+
+
+def test_scope_declared_from_inputs_only():
+    scope = scope_mod.declare_scope(_extracted(), "fixture", "20240101", "20241231",
+                                    "hold", 3.0, 2.0, 12)
+    assert scope["declared_before_backtest"] is True
+    assert scope["declared_symbols"] == ["RB"]
+    assert scope["scope_hash"]
+    # No trade information can leak into the declaration.
+    assert "trades" not in scope
+
+
+def test_scope_hash_is_stable_and_sensitive():
+    a = scope_mod.declare_scope(_extracted(), "fixture", "20240101", "20241231", "hold", 3.0, 2.0, 12)
+    b = scope_mod.declare_scope(_extracted(), "fixture", "20240101", "20241231", "hold", 3.0, 2.0, 12)
+    c = scope_mod.declare_scope(_extracted(), "fixture", "20240101", "20241231", "hold", 5.0, 2.0, 12)
+    assert a["scope_hash"] == b["scope_hash"]
+    assert a["scope_hash"] != c["scope_hash"]
+
+
+def test_unmapped_rule_is_declared_up_front():
+    res = run({"text": "中科星图 涨到23.7", "published_at": "2026-11-13T10:00:00+08:00"},
+              {"apply_defaults": True})
+    scope = scope_mod.declare_scope(res, "panda", "20260101", "20261231", "hold", 3.0, 2.0, 12)
+    assert scope["declared_symbols"] == []
+    assert len(scope["unmapped_rules"]) == 1
+    assert scope["unmapped_rules"][0]["direction"] == "long"
+
+
+def test_verification_detects_undeclared_trade():
+    scope = scope_mod.declare_scope(_extracted(), "fixture", "20240101", "20241231",
+                                    "hold", 3.0, 2.0, 12)
+    bars = {"RB": load_csv(os.path.join(FIXTURES, "bars_RB.csv"))}
+    trades = [{"symbol": "I", "entry_date": "20240110"}]
+    v = scope_mod.verify_scope(scope, bars, trades, [])
+    assert v["honoured"] is False
+    assert any("undeclared" in x for x in v["violations"])
+
+
+def test_verification_detects_trade_outside_window():
+    scope = scope_mod.declare_scope(_extracted(), "fixture", "20240101", "20240201",
+                                    "hold", 3.0, 2.0, 12)
+    bars = {"RB": load_csv(os.path.join(FIXTURES, "bars_RB.csv"))}
+    trades = [{"symbol": "RB", "entry_date": "20240301"}]
+    v = scope_mod.verify_scope(scope, bars, trades, [])
+    assert v["honoured"] is False
+    assert any("escapes declared range" in x for x in v["violations"])
+
+
+def test_verification_honoured_on_clean_run():
+    scope = scope_mod.declare_scope(_extracted(), "fixture", "20240101", "20241231",
+                                    "hold", 3.0, 2.0, 12)
+    bars = {"RB": load_csv(os.path.join(FIXTURES, "bars_RB.csv"))}
+    trades = [{"symbol": "RB", "entry_date": "20240110"}]
+    v = scope_mod.verify_scope(scope, bars, trades, [])
+    assert v["honoured"] is True
+    assert v["violations"] == []
+
+
+def test_applicability_uses_runtime_scope():
+    from backtest import applicability
+
+    scope = scope_mod.declare_scope(_extracted(), "fixture", "20240101", "20241231",
+                                    "hold", 3.0, 2.0, 12)
+    verification = {"symbols_traded": ["RB"], "trade_span": {"first": "20240110", "last": "20240301"},
+                    "violations": [], "honoured": True}
+    app = applicability({"min_trades": 12}, {"rules_total": 1}, scope=scope, verification=verification)
+    assert app["declared_before_run"] is True
+    assert any("RB" in x for x in app["in_scope"])
+    assert app["scope_honoured"] is True
+    assert app["replay_equivalence"]["what_this_is_not"]

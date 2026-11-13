@@ -47,7 +47,7 @@ except ImportError:  # direct execution (also under ``python -I``)
         parse_levels,
     )
 
-VERSION = "0.2.2"
+VERSION = "0.3.0"
 
 # ---------------------------------------------------------------------------
 # Frozen default policy
