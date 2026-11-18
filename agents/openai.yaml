@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: skill-opinion-to-ruler
   description: Extract testable trading rules from subjective market opinions. Maps free-form text into instrument, direction, entry trigger, horizon, stop loss and exit rule; validates extraction against a human-labelled sample; evaluates cost-adjusted results against a paired buy-and-hold baseline.
-  version: 0.7.0
+  version: 0.7.1
 
 x-skill-info:
   name: skill-opinion-to-ruler
@@ -32,6 +32,21 @@ x-steps:
     script: scripts/compare_baseline.py
     description: Read-only acceptance guard. Re-runs the deterministic bundled fixtures and compares every field against the shipped anchor baselines/frozen_baseline.json plus baselines/scope_declaration.json; names each field that moved (frozen -> new) and exits 1. Reads files only; never fetches.
     auth_required: false
+
+x-preflight:
+  # Mirror of the "## 前置检查" section in SKILL.md: host-provided data and model,
+  # stop at the first failing item, report only what is missing.
+  host: QuantStudio
+  stop_on_failure: true
+  items:
+    - id: mcp_session
+      check: "mcp__pandadata__auth_status -> ok: true and reauth_required: false"
+    - id: permission_probe
+      check: "one minimal get_trade_cal call; data_permission_required means stop"
+    - id: model
+      check: "supplied by the host; this skill holds no endpoint and no key"
+    - id: interpreter
+      check: "scripts are standard-library only; tests need `import pytest`"
 
 x-acceptance-anchor:
   reference: baselines/frozen_baseline.json
@@ -90,7 +105,7 @@ x-testability-enum: [full, partial, neutral, none]
 x-requirements:
   runtime: python >= 3.8
   packages: []
-  optional_packages: []   # 0.4.0: SDK channel removed; data arrives as agent-landed MCP payloads
+  optional_packages: []   # 0.4.0: legacy fetch channel removed; data arrives as agent-landed MCP payloads
 
 x-boundaries:
   - Daily-close mechanics only; no intraday triggers or limit-locked fills.

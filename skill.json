@@ -1,11 +1,11 @@
 {
   "name": "skill-opinion-to-ruler",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "entrypoint": "SKILL.md",
   "runtime": "python>=3.8",
   "license": "GPL-3.0-only",
   "type": "alpha",
-  "data_source": "PandaData (via MCP, landed in this skill's own fixtures) or caller-provided bars/CSV",
+  "data_source": "PandaData MCP on the QuantStudio host (landed in this skill's own fixtures) or caller-provided bars/CSV",
   "data_source_note": "脚本不联网、不需要凭证：MCP 工具只能由 agent 调用，所以链路是 agent 调 mcp__pandadata__call_pandadata → 把返回载荷原样写入本技能的 tests/fixtures/raw/<method>__<label>.json → python3 scripts/mcp_landing.py --build 转成本技能既有格式 tests/fixtures/landed/bars_<SYMBOL>.csv 与 dominant_<PRODUCT>.csv（并写 provenance.json）。构建时强制校验截断判据（parquet 通道的 truncated / row_count<total_rows），不完整即结构化报错并非 0 退出；--allow-partial 放行时在产物里留下 partial 标记，评测报告据此告警。本技能不引用任何其他技能的脚本或路径。详见 references/mcp-data.md。",
   "entry_script": "scripts/build.py",
   "source_task": "jobs/skill-opinion-to-ruler.txt",

@@ -6,6 +6,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [0.7.1] — 2026-11-18
+
+套件规模：164 → 225 条用例，累计新增 61 条（这 61 条随 0.7.0 落盘，0.7.1 只统一
+口径与补守卫，未再增删用例；计数按 `pytest --collect-only` 实测）。
+
+文档口径统一，不改任何行为：本次是 **non-breaking**（本包唯一一次 breaking 仍是
+0.4.0 移除旧取数通道、改由 agent 经 PandaData MCP 落盘）。
+
+- `SKILL.md` 的「前置检查」点名运行环境为 **QuantStudio**：解释器、模型与数据通道
+  都由宿主提供，技能不自行准备数据也不自行准备模型。
+- README / INSTALL / references / agents 中残留的「SDK」字样全部清除，
+  统一成「取数客户端 / MCP 落盘」表述（已发布版本的历史记述未改动）。
+- `tests/test_preflight.py` 的必需项加入 `QuantStudio`；`tests/test_docs.py` 的禁用词
+  加入 `SDK`，让这条口径从此由测试守着，而不是靠人记得。
+- `agents/openai.yaml` 新增 `x-preflight` 块，把前置检查暴露给只读适配器的 agent；
+  `skill.json` 的 `data_source` 标注 QuantStudio 宿主。
+- 与另两个 skill（`skill-jev-history-replay`、`skill-constraint-stress-test`）的前置检查
+  形态对齐：三者同名小节、同样排在可执行流程之前、同样有反向守卫测试。
+
 ## [0.7.0] — 2026-11-18
 
 **这次不是加功能，是把已经交付出去的数字查回来看了一遍。** 0.6.0 的 164 条测试全绿、
@@ -126,7 +145,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 但 CI `[−0.004511, +0.028479]` 跨 0 → `inconclusive`；合成锚点同一套规则给 **−0.0185**，
 符号与真实相反。达标 ≠ 有效应，合成证据不能封顶分数。
 
-
 ---
 
 ## [0.6.0] — 2026-11-18
@@ -245,7 +263,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - 用例数 118 → **160**（`test_ruler.py` 74 + `test_mcp_landing.py` 35 + `test_docs.py` 12 +
   `test_baseline_guard.py` 39）。
 
-
 - 真实行情重跑并固化第二份锚点 `baselines/rb-i-2024H1-real.json`（2024-01-02..06-28，品种 I+RB，
   234 行主力映射 + 320 行具体合约日线，全部经 `mcp_landing.py --build` 与完整性校验落盘）：
   **n=12 达标但 CI [-0.0045, +0.0285] 跨 0 → `verdict` 仍为 `inconclusive`**。
@@ -256,7 +273,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
   已改为**逐笔回查真实返回**后才继续；结论：取数方与判定方不可为同一角色，且落盘载荷应保留 `request_id` 与
   `sha256` 以便人工回查。本技能不在包内自动校验该项（无法离线证伪），仅在文档中写明。
 ---
-
 
 ## [0.5.0] — 2026-11-18
 

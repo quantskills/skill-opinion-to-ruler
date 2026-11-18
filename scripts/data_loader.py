@@ -31,7 +31,7 @@ Design constraints
   (Settings -> PandaData -> Login). This module only reads files.
 
 The dominant-contract construction is unchanged in intent from the pre-MCP
-version; only its input moved from an SDK call to local files. See
+version; only its input moved from a hosted fetch call to local files. See
 ``_stitch_dominant``.
 """
 

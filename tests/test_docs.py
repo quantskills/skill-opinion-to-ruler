@@ -12,7 +12,7 @@ Guards:
    languages equal pytest's own collection, and the documented list of test
    files is the list that actually exists.
 3. ``skill.json``'s version equals the top entry of ``CHANGELOG.md``.
-4. The removed SDK channel stays removed, and the docs describe this skill only.
+4. The removed legacy fetch channel stays removed, and the docs describe this skill only.
 """
 
 from __future__ import annotations
@@ -351,7 +351,8 @@ def _read(path):
 def test_no_document_claims_the_removed_sdk_channel():
     """Docs may name the old channel only as history (CHANGELOG) or as removed."""
     banned = ("export PANDA_DATA_" + "", "pip install " + '"panda-data',
-              "--panda" + " ", "panda_data login failed", "ModuleNotFoundError: panda_data")
+              "--panda" + " ", "panda_data login failed", "ModuleNotFoundError: panda_data",
+              "SDK")
     docs = ["README.md", "README.en.md", "SKILL.md", "INSTALL.md",
             os.path.join("references", "api_guide.md"),
             os.path.join("references", "validation.md"),

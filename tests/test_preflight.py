@@ -16,7 +16,7 @@ def test_preflight_section_exists_and_covers_mcp_and_model():
     assert i >= 0, "SKILL.md 必须有前置检查小节"
     j = TEXT.find("\n## ", i + 5)
     block = TEXT[i:j if j > 0 else len(TEXT)]
-    for need in ("auth_status", "reauth_required", "import pytest"):
+    for need in ("QuantStudio", "auth_status", "reauth_required", "import pytest"):
         assert need in block, f"前置检查缺少 {need}"
     # 脚本是纯标准库（requirements.txt 声明无三方依赖），所以 pandas 不是前置条件。
     # 旧文本把它当依赖，是在一台没装 pandas 的机器上把一条永远过不了的检查写成闸门。

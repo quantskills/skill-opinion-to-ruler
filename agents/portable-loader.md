@@ -123,7 +123,7 @@ python3 -m pytest tests/ -v   # 225 cases (113 ruler + 39 landing + 18 doc guard
 
 - Python 3.8+
 - Standard library only
-- No optional packages: the SDK channel was removed in 0.4.0, and data arrives through
+- No optional packages: the legacy fetch channel was removed in 0.4.0, and data arrives through
   agent-landed MCP payloads (nothing this skill fetches itself)
 
 ## Boundaries

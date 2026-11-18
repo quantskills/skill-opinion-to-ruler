@@ -94,16 +94,16 @@ jobs:
           python scripts/evaluate.py --help
           python scripts/compare_baseline.py --help
           python scripts/mcp_landing.py --help
-      # The data path must be file-only: no SDK import, no login call, no credential
-      # env vars, no SDK pin anywhere in code / deps / metadata. CHANGELOG history is
+      # The data path must be file-only: no fetching-client import, no login call, no credential
+      # env vars, no fetching-client pin in code / deps / metadata. CHANGELOG history is
       # deliberately excluded — past entries keep naming the channel they describe.
       - name: No online data egress in code, deps or metadata
         run: |
           set -euo pipefail
           hits=$(grep -rnE "import panda_data|init_token\(|PANDA_DATA_(USERNAME|PASSWORD|BASE_URL)|panda-data==" \
                    --include=*.py --include=*.txt --include=*.json --include=*.toml . || true)
-          if [ -n "$hits" ]; then echo "SDK traces found:"; echo "$hits"; exit 1; fi
-      - name: Scripts must not import networking or SDK modules
+          if [ -n "$hits" ]; then echo "fetching-client traces found:"; echo "$hits"; exit 1; fi
+      - name: Scripts must not import networking or fetching-client modules
         run: |
           set -euo pipefail
           hits=$(grep -rnE "^[[:space:]]*(import|from)[[:space:]]+(socket|http|urllib|requests|aiohttp)[[:space:]]" \

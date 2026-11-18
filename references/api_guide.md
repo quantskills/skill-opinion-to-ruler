@@ -7,7 +7,7 @@
 | 落盘构建产物（真实行情） | `load_bars(sym, start, end, fixtures_dir=...)` | agent 经 PandaData MCP 取回载荷后由 `scripts/mcp_landing.py --build` 构建的 CSV |
 | 调用方 CSV（离线 / CI） | `load_bars(sym, start, end, csv_path=...)` | 使用者自备的 `date,open,high,low,close[,volume]` |
 
-**脚本内没有任何在线取数出口**：不 import SDK、不登录、不读凭证环境变量、不开网络连接。
+**脚本内没有任何在线取数出口**：不 import 任何取数组件、不登录、不读凭证环境变量、不开网络连接。
 这不是风格选择，而是环境约束——MCP 工具只能由 agent 调用，Python 脚本调不到。
 
 ## 1. PandaData MCP + 本技能自有落盘（真实行情通道）

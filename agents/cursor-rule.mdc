@@ -80,7 +80,7 @@ A negative result is a valid deliverable.
 - Standard library only
 - No optional packages. Live bars come from the PandaData **MCP**, and MCP tools are callable
   only by an agent — so the agent fetches and lands the payload, and the scripts then read
-  local files only: no network access, no credentials, no other skill, no old SDK. See
+  local files only: no network access, no credentials, no other skill, no legacy fetch channel. See
   `references/mcp-data.md`.
 
 ## Landing real bars
