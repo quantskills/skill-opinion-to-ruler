@@ -226,13 +226,61 @@ def _bootstrap_ci(values: List[float], iters: int = 2000, seed: int = 20240101) 
     }
 
 
-def _sharpe(returns: List[float]) -> Optional[float]:
+def _per_trade_sharpe(returns: List[float]) -> Optional[float]:
+    """mean/sd of the per-TRADE return distribution, deliberately unannualised."""
     if len(returns) < 2:
         return None
     mean = sum(returns) / len(returns)
     var = sum((r - mean) ** 2 for r in returns) / (len(returns) - 1)
     sd = math.sqrt(var)
-    return None if sd == 0 else round(mean / sd * math.sqrt(BARS_PER_YEAR), 3)
+    return None if sd == 0 else mean / sd
+
+
+def sharpe_metrics(trades: Sequence[Dict[str, Any]]) -> Dict[str, Any]:
+    """Sharpe at two clearly labelled bases, annualised by trade frequency.
+
+    ``net_return`` is a **per-trade** figure: one number per round trip, each
+    covering its own multi-day horizon. The old code scaled that distribution by
+    ``sqrt(BARS_PER_YEAR)``, which is the multiplier for a series of **daily**
+    returns. On the frozen fixture that inflated a per-trade ratio of 0.76 into a
+    reported Sharpe of 11.85 — a 15.6x error sitting in a shipped acceptance
+    anchor, where ``references/validation.md`` cites Sharpe as evidence of "how
+    big the effect is".
+
+    The honest annualisation uses the frequency the returns actually arrive at:
+    ``trades_per_year = BARS_PER_YEAR / mean(held_bars)``, so
+    ``sharpe_annualised = (mean/sd) * sqrt(trades_per_year)``. Trades are assumed
+    non-overlapping, which this tool's per-rule independence already implies.
+    Both bases are reported, and ``held_bars`` coverage is stated, so a reader
+    can tell a real number from an unannualisable one.
+    """
+    net = [t["net_return"] for t in trades if t.get("net_return") is not None]
+    per_trade = _per_trade_sharpe(net)
+    held = [t.get("held_bars") for t in trades if t.get("held_bars")]
+    out = {
+        "sharpe_per_trade": None if per_trade is None else round(per_trade, 3),
+        "sharpe": None,
+        "sharpe_basis": None,
+        "sharpe_trades_per_year": None,
+        "sharpe_held_bars_coverage": "%d/%d" % (len(held), len(net)),
+    }
+    if per_trade is None:
+        out["sharpe_basis"] = "insufficient trades"
+        return out
+    if not held:
+        out["sharpe_basis"] = "per-trade only: no holding period recorded, cannot annualise"
+        return out
+    mean_held = sum(held) / len(held)
+    if mean_held <= 0:
+        out["sharpe_basis"] = "per-trade only: non-positive mean holding period"
+        return out
+    trades_per_year = BARS_PER_YEAR / mean_held
+    out["sharpe"] = round(per_trade * math.sqrt(trades_per_year), 3)
+    out["sharpe_trades_per_year"] = round(trades_per_year, 3)
+    out["sharpe_basis"] = ("per-trade mean/sd scaled by sqrt(trades_per_year), "
+                           "trades_per_year = %d / mean(held_bars=%.2f)"
+                           % (BARS_PER_YEAR, mean_held))
+    return out
 
 
 def _max_drawdown(returns: List[float]) -> float:
@@ -294,6 +342,8 @@ def evaluate(rules: Sequence[Dict[str, Any]], bars_by_symbol: Dict[str, List[Dic
     for t in trades:
         by_reason[t["exit_reason"]] = by_reason.get(t["exit_reason"], 0) + 1
 
+    sharpe = sharpe_metrics(trades)
+
     return {
         "baseline": baseline,
         "cost_bps": cost_bps,
@@ -307,7 +357,11 @@ def evaluate(rules: Sequence[Dict[str, Any]], bars_by_symbol: Dict[str, List[Dic
             "win_rate": round(sum(1 for r in net if r > 0) / len(net), 4) if net else 0.0,
             "mean_net_return": round(sum(net) / len(net), 6) if net else 0.0,
             "total_net_return": round(sum(net), 6),
-            "sharpe": _sharpe(net),
+            "sharpe": sharpe["sharpe"],
+            "sharpe_per_trade": sharpe["sharpe_per_trade"],
+            "sharpe_basis": sharpe["sharpe_basis"],
+            "sharpe_trades_per_year": sharpe["sharpe_trades_per_year"],
+            "sharpe_held_bars_coverage": sharpe["sharpe_held_bars_coverage"],
             "max_drawdown": _max_drawdown(net),
             "mean_baseline_return": round(sum(t["baseline_return"] for t in trades if t["baseline_return"] is not None)
                                           / max(1, len([t for t in trades if t["baseline_return"] is not None])), 6),

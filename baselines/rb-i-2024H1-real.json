@@ -1,0 +1,2106 @@
+{
+  "generated_at": "2026-11-18T12:40:43.518119+00:00",
+  "data_mode": "landed",
+  "data": {
+    "symbols": {
+      "I": {
+        "source": "landed",
+        "symbol": "I",
+        "bars": 117,
+        "method": "get_future_dominant+get_future_daily",
+        "files": [
+          "bars_I2405.DCE.csv",
+          "bars_I2409.DCE.csv",
+          "dominant_I.csv"
+        ],
+        "requested": {
+          "start": "20240102",
+          "end": "20240628"
+        },
+        "available": {
+          "first": "20240102",
+          "last": "20240628",
+          "dates": 117
+        },
+        "effective": {
+          "start": "20240102",
+          "end": "20240628"
+        },
+        "partial": false,
+        "partial_payloads": [],
+        "source_payloads": [
+          "get_future_daily__I2405_20240102_20240327.json",
+          "get_future_daily__I2409_20240328_20240628.json",
+          "get_future_dominant__I_RB_20240102_20240628.json"
+        ],
+        "coverage_missing": [],
+        "coverage_shrunk": false,
+        "coverage_policy": "error",
+        "contracts": [
+          {
+            "contract": "I2405.DCE",
+            "dominant_from": "20240102",
+            "dominant_to": "20240327",
+            "dominant_dates": 56,
+            "bars_used": 56,
+            "partial": false
+          },
+          {
+            "contract": "I2409.DCE",
+            "dominant_from": "20240328",
+            "dominant_to": "20240628",
+            "dominant_dates": 61,
+            "bars_used": 61,
+            "partial": false
+          }
+        ],
+        "roll_count": 1
+      },
+      "RB": {
+        "source": "landed",
+        "symbol": "RB",
+        "bars": 117,
+        "method": "get_future_dominant+get_future_daily",
+        "files": [
+          "bars_RB2405.SHF.csv",
+          "bars_RB2410.SHF.csv",
+          "dominant_RB.csv"
+        ],
+        "requested": {
+          "start": "20240102",
+          "end": "20240628"
+        },
+        "available": {
+          "first": "20240102",
+          "last": "20240628",
+          "dates": 117
+        },
+        "effective": {
+          "start": "20240102",
+          "end": "20240628"
+        },
+        "partial": false,
+        "partial_payloads": [],
+        "source_payloads": [
+          "get_future_daily__RB_20240102_20240628.json",
+          "get_future_dominant__I_RB_20240102_20240628.json"
+        ],
+        "coverage_missing": [],
+        "coverage_shrunk": false,
+        "coverage_policy": "error",
+        "contracts": [
+          {
+            "contract": "RB2405.SHF",
+            "dominant_from": "20240102",
+            "dominant_to": "20240329",
+            "dominant_dates": 58,
+            "bars_used": 58,
+            "partial": false
+          },
+          {
+            "contract": "RB2410.SHF",
+            "dominant_from": "20240401",
+            "dominant_to": "20240628",
+            "dominant_dates": 59,
+            "bars_used": 59,
+            "partial": false
+          }
+        ],
+        "roll_count": 1
+      }
+    },
+    "partial_symbols": [],
+    "shrunk_symbols": [],
+    "skipped_symbols": {},
+    "built_files": [
+      "bars_I2405.DCE.csv",
+      "bars_I2409.DCE.csv",
+      "bars_RB2405.SHF.csv",
+      "bars_RB2410.SHF.csv",
+      "dominant_I.csv",
+      "dominant_RB.csv"
+    ],
+    "payload_files": [
+      "get_future_daily__I2405_20240102_20240327.json",
+      "get_future_daily__I2409_20240328_20240628.json",
+      "get_future_daily__RB_20240102_20240628.json",
+      "get_future_dominant__I_RB_20240102_20240628.json"
+    ],
+    "all_complete": true,
+    "landed_dir": "real_landed",
+    "landed_dir_outside_skill": true,
+    "landed_dir_note": "the build directory sat outside the skill tree, so only its name is recorded: an absolute path here is not reproducible on another machine. The authoritative provenance is source_payloads (gateway request ids) plus the per-contract windows below.",
+    "coverage_policy": "error"
+  },
+  "extraction": {
+    "summary": {
+      "documents": 16,
+      "rules_total": 15,
+      "rules_full": 6,
+      "rules_partial": 7,
+      "rules_neutral": 2,
+      "unruleable": 1,
+      "ruleable_share": 0.9375
+    },
+    "config_hash": "8f9058b5a70c835d6c30ae807c24c4e04d24d9c0fcef5ca62266ec43a39cb701",
+    "accuracy": {
+      "samples": 26,
+      "fields": {
+        "instrument_symbol": {
+          "tp": 24,
+          "fp": 0,
+          "fn": 0,
+          "tn": 3,
+          "policy_default": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "exact_match_rate": 1.0,
+          "exact_match_ci95_low": 0.8723,
+          "exact_match_text_only": 1.0,
+          "exact_match_text_only_ci95_low": 0.8723,
+          "judgements": 27,
+          "judged_without_policy": 27
+        },
+        "direction": {
+          "tp": 25,
+          "fp": 0,
+          "fn": 0,
+          "tn": 2,
+          "policy_default": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "exact_match_rate": 1.0,
+          "exact_match_ci95_low": 0.8723,
+          "exact_match_text_only": 1.0,
+          "exact_match_text_only_ci95_low": 0.8723,
+          "judgements": 27,
+          "judged_without_policy": 27
+        },
+        "entry_expr": {
+          "tp": 16,
+          "fp": 0,
+          "fn": 0,
+          "tn": 8,
+          "policy_default": 3,
+          "precision": 1.0,
+          "recall": 1.0,
+          "exact_match_rate": 1.0,
+          "exact_match_ci95_low": 0.8723,
+          "exact_match_text_only": 1.0,
+          "exact_match_text_only_ci95_low": 0.8575,
+          "judgements": 27,
+          "judged_without_policy": 24
+        },
+        "stop_expr": {
+          "tp": 13,
+          "fp": 0,
+          "fn": 0,
+          "tn": 14,
+          "policy_default": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "exact_match_rate": 1.0,
+          "exact_match_ci95_low": 0.8723,
+          "exact_match_text_only": 1.0,
+          "exact_match_text_only_ci95_low": 0.8723,
+          "judgements": 27,
+          "judged_without_policy": 27
+        },
+        "exit_expr": {
+          "tp": 14,
+          "fp": 0,
+          "fn": 0,
+          "tn": 13,
+          "policy_default": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "exact_match_rate": 1.0,
+          "exact_match_ci95_low": 0.8723,
+          "exact_match_text_only": 1.0,
+          "exact_match_text_only_ci95_low": 0.8723,
+          "judgements": 27,
+          "judged_without_policy": 27
+        },
+        "horizon_days": {
+          "tp": 6,
+          "fp": 0,
+          "fn": 0,
+          "tn": 21,
+          "policy_default": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "exact_match_rate": 1.0,
+          "exact_match_ci95_low": 0.8723,
+          "exact_match_text_only": 1.0,
+          "exact_match_text_only_ci95_low": 0.8723,
+          "judgements": 27,
+          "judged_without_policy": 27
+        },
+        "testability": {
+          "tp": 27,
+          "fp": 0,
+          "fn": 0,
+          "tn": 0,
+          "policy_default": 0,
+          "precision": 1.0,
+          "recall": 1.0,
+          "exact_match_rate": 1.0,
+          "exact_match_ci95_low": 0.8723,
+          "exact_match_text_only": 1.0,
+          "exact_match_text_only_ci95_low": 0.8723,
+          "judgements": 27,
+          "judged_without_policy": 27
+        }
+      },
+      "per_sample": [
+        {
+          "id": "op-001",
+          "fields": {
+            "instrument_symbol": {
+              "expected": "RB",
+              "predicted": "RB",
+              "ok": true,
+              "kind": "ok"
+            },
+            "direction": {
+              "expected": "long",
+              "predicted": "long",
+              "ok": true,
+              "kind": "ok"
+            },
+            "entry_expr": {
+              "expected": "close > 3850",
+              "predicted": "close > 3850",
+              "ok": true,
+              "kind": "ok"
+            },
+            "stop_expr": {
+              "expected": "close < 3780",
+              "predicted": "close < 3780",
+              "ok": true,
+              "kind": "ok"
+            },
+            "exit_expr": {
+              "expected": "close >= 4100",
+              "predicted": "close >= 4100",
+              "ok": true,
+              "kind": "ok"
+            },
+            "horizon_days": {
+              "expected": 10,
+              "predicted": 10,
+              "ok": true,
+              "kind": "ok"
+            },
+            "testability": {
+              "expected": "full",
+              "predicted": "full",
+              "ok": true,
+              "kind": "ok"
+            }
+          },
+          "predicted_rules": 1,
+          "labelled_rules": 1,
+          "all_fields_ok": true
+        },
+        {
+          "id": "op-002",
+          "fields": {
+            "instrument_symbol": {
+              "expected": "I",
+              "predicted": "I",
+              "ok": true,
+              "kind": "ok"
+            },
+            "direction": {
+              "expected": "short",
+              "predicted": "short",
+              "ok": true,
+              "kind": "ok"
+            },
+            "entry_expr": {
+              "expected": "close < 840",
+              "predicted": "close < 840",
+              "ok": true,
+              "kind": "ok"
+            },
+            "stop_expr": {
+              "expected": "close > 880",
+              "predicted": "close > 880",
+              "ok": true,
+              "kind": "ok"
+            },
+            "exit_expr": {
+              "expected": null,
+              "predicted": null,
+              "ok": true,
+              "kind": "ok"
+            },
+            "horizon_days": {
+              "expected": 3,
+              "predicted": 3,
+              "ok": true,
+              "kind": "ok"
+            },
+            "testability": {
+              "expected": "full",
+              "predicted": "full",
+              "ok": true,
+              "kind": "ok"
+            }
+          },
+          "predicted_rules": 1,
+          "labelled_rules": 1,
+          "all_fields_ok": true
+        },
+        {
+          "id": "op-003",
+          "fields": {
+            "instrument_symbol": {
+              "expected": "RB",
+              "predicted": "RB",
+              "ok": true,
+              "kind": "ok"
+            },
+            "direction": {
+              "expected": "long",
+              "predicted": "long",
+              "ok": true,
+              "kind": "ok"
+            },
+            "entry_expr": {
+              "expected": "close <= 3800",
+              "predicted": "close <= 3800",
+              "ok": true,
+              "kind": "ok"
+            },
+            "stop_expr": {
+              "expected": "close < 3700",
+              "predicted": "close < 3700",
+              "ok": true,
+              "kind": "ok"
+            },
+            "exit_expr": {
+              "expected": "close >= 4300",
+              "predicted": "close >= 4300",
+              "ok": true,
+              "kind": "ok"
+            },
+            "horizon_days": {
+              "expected": 20,
+              "predicted": 20,
+              "ok": true,
+              "kind": "ok"
+            },
+            "testability": {
+              "expected": "full",
+              "predicted": "full",
+              "ok": true,
+              "kind": "ok"
+            }
+          },
+          "predicted_rules": 1,
+          "labelled_rules": 1,
+          "all_fields_ok": true
+        },
+        {
+          "id": "op-004",
+          "fields": {
+            "instrument_symbol": {
+              "expected": "I",
+              "predicted": "I",
+              "ok": true,
+              "kind": "ok"
+            },
+            "direction": {
+              "expected": "long",
+              "predicted": "long",
+              "ok": true,
+              "kind": "ok"
+            },
+            "entry_expr": {
+              "expected": "close > 900",
+              "predicted": "close > 900",
+              "ok": true,
+              "kind": "ok"
+            },
+            "stop_expr": {
+              "expected": null,
+              "predicted": null,
+              "ok": true,
+              "kind": "ok"
+            },
+            "exit_expr": {
+              "expected": null,
+              "predicted": null,
+              "ok": true,
+              "kind": "ok"
+            },
+            "horizon_days": {
+              "expected": null,
+              "predicted": null,
+              "ok": true,
+              "kind": "ok"
+            },
+            "testability": {
+              "expected": "partial",
+              "predicted": "partial",
+              "ok": true,
+              "kind": "ok"
+            }
+          },
+          "predicted_rules": 1,
+          "labelled_rules": 1,
+          "all_fields_ok": true
+        },
+        {
+          "id": "op-005",
+          "fields": {
+            "instrument_symbol": {
+              "expected": "RB",
+              "predicted": "RB",
+              "ok": true,
+              "kind": "ok"
+            },
+            "direction": {
+              "expected": "neutral",
+              "predicted": "neutral",
+              "ok": true,
+              "kind": "ok"
+            },
+            "entry_expr": {
+              "expected": null,
+              "predicted": null,
+              "ok": true,
+              "kind": "ok"
+            },
+            "stop_expr": {
+              "expected": null,
+              "predicted": null,
+              "ok": true,
+              "kind": "ok"
+            },
+            "exit_expr": {
+              "expected": null,
+              "predicted": null,
+              "ok": true,
+              "kind": "ok"
+            },
+            "horizon_days": {
+              "expected": null,
+              "predicted": null,
+              "ok": true,
+              "kind": "ok"
+            },
+            "testability": {
+              "expected": "neutral",
+              "predicted": "neutral",
+              "ok": true,
+              "kind": "ok"
+            }
+          },
+          "predicted_rules": 1,
+          "labelled_rules": 1,
+          "all_fields_ok": true
+        },
+        {
+          "id": "op-006",
+          "fields": {
+            "instrument_symbol": {
+              "expected": null,
+              "predicted": null,
+              "ok": true,
+              "kind": "ok"
+            },
+            "direction": {
+              "expected": null,
+              "predicted": null,
+              "ok": true,
+              "kind": "ok"
+            },
+            "entry_expr": {
+              "expected": null,
+              "predicted": null,
+              "ok": true,
+              "kind": "ok"
+            },
+            "stop_expr": {
+              "expected": null,
+              "predicted": null,
+              "ok": true,
+              "kind": "ok"
+            },
+            "exit_expr": {
+              "expected": null,
+              "predicted": null,
+              "ok": true,
+              "kind": "ok"
+            },
+            "horizon_days": {
+              "expected": null,
+              "predicted": null,
+              "ok": true,
+              "kind": "ok"
+            },
+            "testability": {
+              "expected": "none",
+              "predicted": "none",
+              "ok": true,
+              "kind": "ok"
+            }
+          },
+          "predicted_rules": 1,
+          "labelled_rules": 1,
+          "all_fields_ok": true
+        },
+        {
+          "id": "op-007",
+          "fields": {
+            "instrument_symbol": {
+              "expected": "I",
+              "predicted": "I",
+              "ok": true,
+              "kind": "ok"
+            },
+            "direction": {
+              "expected": "long",
+              "predicted": "long",
+              "ok": true,
+              "kind": "ok"
+            },
+            "entry_expr": {
+              "expected": null,
+              "predicted": "market_on_next_open",
+              "ok": true,
+              "kind": "policy_default"
+            },
+            "stop_expr": {
+              "expected": "close < 860",
+              "predicted": "close < 860",
+              "ok": true,
+              "kind": "ok"
+            },
+            "exit_expr": {
+              "expected": "close >= 950",
+              "predicted": "close >= 950",
+              "ok": true,
+              "kind": "ok"
+            },
+            "horizon_days": {
+              "expected": null,
+              "predicted": null,
+              "ok": true,
+              "kind": "ok"
+            },
+            "testability": {
+              "expected": "partial",
+              "predicted": "partial",
+              "ok": true,
+              "kind": "ok"
+            }
+          },
+          "predicted_rules": 1,
+          "labelled_rules": 1,
+          "all_fields_ok": true
+        },
+        {
+          "id": "op-008",
+          "fields": {
+            "instrument_symbol": {
+              "expected": "RB",
+              "predicted": "RB",
+              "ok": true,
+              "kind": "ok"
+            },
+            "direction": {
+              "expected": "short",
+              "predicted": "short",
+              "ok": true,
+              "kind": "ok"
+            },
+            "entry_expr": {
+              "expected": "close < 3750",
+              "predicted": "close < 3750",
+              "ok": true,
+              "kind": "ok"
+            },
+            "stop_expr": {
+              "expected": "close > 3820",
+              "predicted": "close > 3820",
+              "ok": true,
+              "kind": "ok"
+            },
+            "exit_expr": {
+              "expected": "close <= 3600",
+              "predicted": "close <= 3600",
+              "ok": true,
+              "kind": "ok"
+            },
+            "horizon_days": {
+              "expected": null,
+              "predicted": null,
+              "ok": true,
+              "kind": "ok"
+            },
+            "testability": {
+              "expected": "partial",
+              "predicted": "partial",
+              "ok": true,
+              "kind": "ok"
+            }
+          },
+          "predicted_rules": 1,
+          "labelled_rules": 1,
+          "all_fields_ok": true
+        },
+        {
+          "id": "op-009",
+          "fields": {
+            "instrument_symbol": {
+              "expected": "I",
+              "predicted": "I",
+              "ok": true,
+              "kind": "ok"
+            },
+            "direction": {
+              "expected": "short",
+              "predicted": "short",
+              "ok": true,
+              "kind": "ok"
+            },
+            "entry_expr": {
+              "expected": "close < 870",
+              "predicted": "close < 870",
+              "ok": true,
+              "kind": "ok"
+            },
+            "stop_expr": {
+              "expected": null,
+              "predicted": null,
+              "ok": true,
+              "kind": "ok"
+            },
+            "exit_expr": {
+              "expected": "close <= 820",
+              "predicted": "close <= 820",
+              "ok": true,
+              "kind": "ok"
+            },
+            "horizon_days": {
+              "expected": null,
+              "predicted": null,
+              "ok": true,
+              "kind": "ok"
+            },
+            "testability": {
+              "expected": "partial",
+              "predicted": "partial",
+              "ok": true,
+              "kind": "ok"
+            }
+          },
+          "predicted_rules": 1,
+          "labelled_rules": 1,
+          "all_fields_ok": true
+        },
+        {
+          "id": "op-010",
+          "fields": {
+            "instrument_symbol": {
+              "expected": "RB",
+              "predicted": "RB",
+              "ok": true,
+              "kind": "ok"
+            },
+            "direction": {
+              "expected": "long",
+              "predicted": "long",
+              "ok": true,
+              "kind": "ok"
+            },
+            "entry_expr": {
+              "expected": "close > 3900",
+              "predicted": "close > 3900",
+              "ok": true,
+              "kind": "ok"
+            },
+            "stop_expr": {
+              "expected": "close < 3830",
+              "predicted": "close < 3830",
+              "ok": true,
+              "kind": "ok"
+            },
+            "exit_expr": {
+              "expected": "close >= 4150",
+              "predicted": "close >= 4150",
+              "ok": true,
+              "kind": "ok"
+            },
+            "horizon_days": {
+              "expected": null,
+              "predicted": null,
+              "ok": true,
+              "kind": "ok"
+            },
+            "testability": {
+              "expected": "partial",
+              "predicted": "partial",
+              "ok": true,
+              "kind": "ok"
+            }
+          },
+          "predicted_rules": 1,
+          "labelled_rules": 1,
+          "all_fields_ok": true
+        },
+        {
+          "id": "op-011",
+          "fields": {
+            "instrument_symbol": {
+              "expected": "I",
+              "predicted": "I",
+              "ok": true,
+              "kind": "ok"
+            },
+            "direction": {
+              "expected": "long",
+              "predicted": "long",
+              "ok": true,
+              "kind": "ok"
+            },
+            "entry_expr": {
+              "expected": null,
+              "predicted": "market_on_next_open",
+              "ok": true,
+              "kind": "policy_default"
+            },
+            "stop_expr": {
+              "expected": "close < 900",
+              "predicted": "close < 900",
+              "ok": true,
+              "kind": "ok"
+            },
+            "exit_expr": {
+              "expected": "close >= 1000",
+              "predicted": "close >= 1000",
+              "ok": true,
+              "kind": "ok"
+            },
+            "horizon_days": {
+              "expected": 20,
+              "predicted": 20,
+              "ok": true,
+              "kind": "ok"
+            },
+            "testability": {
+              "expected": "full",
+              "predicted": "full",
+              "ok": true,
+              "kind": "ok"
+            }
+          },
+          "predicted_rules": 1,
+          "labelled_rules": 1,
+          "all_fields_ok": true
+        },
+        {
+          "id": "op-012",
+          "fields": {
+            "instrument_symbol": {
+              "expected": "RB",
+              "predicted": "RB",
+              "ok": true,
+              "kind": "ok"
+            },
+            "direction": {
+              "expected": "short",
+              "predicted": "short",
+              "ok": true,
+              "kind": "ok"
+            },
+            "entry_expr": {
+              "expected": null,
+              "predicted": "market_on_next_open",
+              "ok": true,
+              "kind": "policy_default"
+            },
+            "stop_expr": {
+              "expected": null,
+              "predicted": null,
+              "ok": true,
+              "kind": "ok"
+            },
+            "exit_expr": {
+              "expected": "close <= 3700",
+              "predicted": "close <= 3700",
+              "ok": true,
+              "kind": "ok"
+            },
+            "horizon_days": {
+              "expected": 3,
+              "predicted": 3,
+              "ok": true,
+              "kind": "ok"
+            },
+            "testability": {
+              "expected": "full",
+              "predicted": "full",
+              "ok": true,
+              "kind": "ok"
+            }
+          },
+          "predicted_rules": 1,
+          "labelled_rules": 1,
+          "all_fields_ok": true
+        },
+        {
+          "id": "op-013",
+          "fields": {
+            "instrument_symbol": {
+              "expected": "I",
+              "predicted": "I",
+              "ok": true,
+              "kind": "ok"
+            },
+            "direction": {
+              "expected": "long",
+              "predicted": "long",
+              "ok": true,
+              "kind": "ok"
+            },
+            "entry_expr": {
+              "expected": "close > 920",
+              "predicted": "close > 920",
+              "ok": true,
+              "kind": "ok"
+            },
+            "stop_expr": {
+              "expected": "close < 890",
+              "predicted": "close < 890",
+              "ok": true,
+              "kind": "ok"
+            },
+            "exit_expr": {
+              "expected": "close >= 980",
+              "predicted": "close >= 980",
+              "ok": true,
+              "kind": "ok"
+            },
+            "horizon_days": {
+              "expected": null,
+              "predicted": null,
+              "ok": true,
+              "kind": "ok"
+            },
+            "testability": {
+              "expected": "partial",
+              "predicted": "partial",
+              "ok": true,
+              "kind": "ok"
+            }
+          },
+          "predicted_rules": 1,
+          "labelled_rules": 1,
+          "all_fields_ok": true
+        },
+        {
+          "id": "op-014",
+          "fields": {
+            "instrument_symbol": {
+              "expected": "RB",
+              "predicted": "RB",
+              "ok": true,
+              "kind": "ok"
+            },
+            "direction": {
+              "expected": "long",
+              "predicted": "long",
+              "ok": true,
+              "kind": "ok"
+            },
+            "entry_expr": {
+              "expected": "close > 3950",
+              "predicted": "close > 3950",
+              "ok": true,
+              "kind": "ok"
+            },
+            "stop_expr": {
+              "expected": "close < 3880",
+              "predicted": "close < 3880",
+              "ok": true,
+              "kind": "ok"
+            },
+            "exit_expr": {
+              "expected": "close >= 4300",
+              "predicted": "close >= 4300",
+              "ok": true,
+              "kind": "ok"
+            },
+            "horizon_days": {
+              "expected": 20,
+              "predicted": 20,
+              "ok": true,
+              "kind": "ok"
+            },
+            "testability": {
+              "expected": "full",
+              "predicted": "full",
+              "ok": true,
+              "kind": "ok"
+            }
+          },
+          "predicted_rules": 1,
+          "labelled_rules": 1,
+          "all_fields_ok": true
+        },
+        {
+          "id": "op-015",
+          "fields": {
+            "instrument_symbol": {
+              "expected": "I",
+              "predicted": "I",
+              "ok": true,
+              "kind": "ok"
+            },
+            "direction": {
+              "expected": "short",
+              "predicted": "short",
+              "ok": true,
+              "kind": "ok"
+            },
+            "entry_expr": {
+              "expected": "close < 910",
+              "predicted": "close < 910",
+              "ok": true,
+              "kind": "ok"
+            },
+            "stop_expr": {
+              "expected": "close > 940",
+              "predicted": "close > 940",
+              "ok": true,
+              "kind": "ok"
+            },
+            "exit_expr": {
+              "expected": "close <= 860",
+              "predicted": "close <= 860",
+              "ok": true,
+              "kind": "ok"
+            },
+            "horizon_days": {
+              "expected": null,
+              "predicted": null,
+              "ok": true,
+              "kind": "ok"
+            },
+            "testability": {
+              "expected": "partial",
+              "predicted": "partial",
+              "ok": true,
+              "kind": "ok"
+            }
+          },
+          "predicted_rules": 1,
+          "labelled_rules": 1,
+          "all_fields_ok": true
+        },
+        {
+          "id": "op-016",
+          "fields": {
+            "instrument_symbol": {
+              "expected": "RB",
+              "predicted": "RB",
+              "ok": true,
+              "kind": "ok"
+            },
+            "direction": {
+              "expected": "neutral",
+              "predicted": "neutral",
+              "ok": true,
+              "kind": "ok"
+            },
+            "entry_expr": {
+              "expected": null,
+              "predicted": null,
+              "ok": true,
+              "kind": "ok"
+            },
+            "stop_expr": {
+              "expected": null,
+              "predicted": null,
+              "ok": true,
+              "kind": "ok"
+            },
+            "exit_expr": {
+              "expected": null,
+              "predicted": null,
+              "ok": true,
+              "kind": "ok"
+            },
+            "horizon_days": {
+              "expected": null,
+              "predicted": null,
+              "ok": true,
+              "kind": "ok"
+            },
+            "testability": {
+              "expected": "neutral",
+              "predicted": "neutral",
+              "ok": true,
+              "kind": "ok"
+            }
+          },
+          "predicted_rules": 1,
+          "labelled_rules": 1,
+          "all_fields_ok": true
+        },
+        {
+          "id": "lab-17",
+          "fields": {
+            "instrument_symbol": {
+              "expected": "RB",
+              "predicted": "RB",
+              "ok": true,
+              "kind": "ok"
+            },
+            "direction": {
+              "expected": "neutral",
+              "predicted": "neutral",
+              "ok": true,
+              "kind": "ok"
+            },
+            "entry_expr": {
+              "expected": null,
+              "predicted": null,
+              "ok": true,
+              "kind": "ok"
+            },
+            "stop_expr": {
+              "expected": null,
+              "predicted": null,
+              "ok": true,
+              "kind": "ok"
+            },
+            "exit_expr": {
+              "expected": null,
+              "predicted": null,
+              "ok": true,
+              "kind": "ok"
+            },
+            "horizon_days": {
+              "expected": null,
+              "predicted": null,
+              "ok": true,
+              "kind": "ok"
+            },
+            "testability": {
+              "expected": "neutral",
+              "predicted": "neutral",
+              "ok": true,
+              "kind": "ok"
+            }
+          },
+          "predicted_rules": 1,
+          "labelled_rules": 1,
+          "all_fields_ok": true
+        },
+        {
+          "id": "lab-18",
+          "fields": {
+            "instrument_symbol": {
+              "expected": "RB",
+              "predicted": "RB",
+              "ok": true,
+              "kind": "ok"
+            },
+            "direction": {
+              "expected": "long",
+              "predicted": "long",
+              "ok": true,
+              "kind": "ok"
+            },
+            "entry_expr": {
+              "expected": "close > 3850",
+              "predicted": "close > 3850",
+              "ok": true,
+              "kind": "ok"
+            },
+            "stop_expr": {
+              "expected": null,
+              "predicted": null,
+              "ok": true,
+              "kind": "ok"
+            },
+            "exit_expr": {
+              "expected": "close >= 4100",
+              "predicted": "close >= 4100",
+              "ok": true,
+              "kind": "ok"
+            },
+            "horizon_days": {
+              "expected": null,
+              "predicted": null,
+              "ok": true,
+              "kind": "ok"
+            },
+            "testability": {
+              "expected": "partial",
+              "predicted": "partial",
+              "ok": true,
+              "kind": "ok"
+            }
+          },
+          "predicted_rules": 1,
+          "labelled_rules": 1,
+          "all_fields_ok": true
+        },
+        {
+          "id": "lab-19",
+          "fields": {
+            "instrument_symbol": {
+              "expected": "RB",
+              "predicted": "RB",
+              "ok": true,
+              "kind": "ok"
+            },
+            "direction": {
+              "expected": "long",
+              "predicted": "long",
+              "ok": true,
+              "kind": "ok"
+            },
+            "entry_expr": {
+              "expected": "close > 3850",
+              "predicted": "close > 3850",
+              "ok": true,
+              "kind": "ok"
+            },
+            "stop_expr": {
+              "expected": "close < 3780",
+              "predicted": "close < 3780",
+              "ok": true,
+              "kind": "ok"
+            },
+            "exit_expr": {
+              "expected": null,
+              "predicted": null,
+              "ok": true,
+              "kind": "ok"
+            },
+            "horizon_days": {
+              "expected": null,
+              "predicted": null,
+              "ok": true,
+              "kind": "ok"
+            },
+            "testability": {
+              "expected": "partial",
+              "predicted": "partial",
+              "ok": true,
+              "kind": "ok"
+            }
+          },
+          "predicted_rules": 1,
+          "labelled_rules": 1,
+          "all_fields_ok": true
+        },
+        {
+          "id": "lab-20",
+          "fields": {
+            "instrument_symbol": {
+              "expected": "I",
+              "predicted": "I",
+              "ok": true,
+              "kind": "ok"
+            },
+            "direction": {
+              "expected": "short",
+              "predicted": "short",
+              "ok": true,
+              "kind": "ok"
+            },
+            "entry_expr": {
+              "expected": "close < 840",
+              "predicted": "close < 840",
+              "ok": true,
+              "kind": "ok"
+            },
+            "stop_expr": {
+              "expected": "close > 880",
+              "predicted": "close > 880",
+              "ok": true,
+              "kind": "ok"
+            },
+            "exit_expr": {
+              "expected": null,
+              "predicted": null,
+              "ok": true,
+              "kind": "ok"
+            },
+            "horizon_days": {
+              "expected": null,
+              "predicted": null,
+              "ok": true,
+              "kind": "ok"
+            },
+            "testability": {
+              "expected": "partial",
+              "predicted": "partial",
+              "ok": true,
+              "kind": "ok"
+            }
+          },
+          "predicted_rules": 1,
+          "labelled_rules": 1,
+          "all_fields_ok": true
+        },
+        {
+          "id": "lab-21",
+          "fields": {
+            "instrument_symbol": {
+              "expected": "RB",
+              "predicted": "RB",
+              "ok": true,
+              "kind": "ok"
+            },
+            "direction": {
+              "expected": "long",
+              "predicted": "long",
+              "ok": true,
+              "kind": "ok"
+            },
+            "entry_expr": {
+              "expected": "close > 3850",
+              "predicted": "close > 3850",
+              "ok": true,
+              "kind": "ok"
+            },
+            "stop_expr": {
+              "expected": "close < 3780",
+              "predicted": "close < 3780",
+              "ok": true,
+              "kind": "ok"
+            },
+            "exit_expr": {
+              "expected": "close >= 4100",
+              "predicted": "close >= 4100",
+              "ok": true,
+              "kind": "ok"
+            },
+            "horizon_days": {
+              "expected": null,
+              "predicted": null,
+              "ok": true,
+              "kind": "ok"
+            },
+            "testability": {
+              "expected": "partial",
+              "predicted": "partial",
+              "ok": true,
+              "kind": "ok"
+            }
+          },
+          "predicted_rules": 1,
+          "labelled_rules": 1,
+          "all_fields_ok": true
+        },
+        {
+          "id": "lab-22",
+          "fields": {
+            "instrument_symbol": {
+              "expected": "RB",
+              "predicted": "RB",
+              "ok": true,
+              "kind": "ok"
+            },
+            "direction": {
+              "expected": "long",
+              "predicted": "long",
+              "ok": true,
+              "kind": "ok"
+            },
+            "entry_expr": {
+              "expected": "close > 3850",
+              "predicted": "close > 3850",
+              "ok": true,
+              "kind": "ok"
+            },
+            "stop_expr": {
+              "expected": null,
+              "predicted": null,
+              "ok": true,
+              "kind": "ok"
+            },
+            "exit_expr": {
+              "expected": null,
+              "predicted": null,
+              "ok": true,
+              "kind": "ok"
+            },
+            "horizon_days": {
+              "expected": null,
+              "predicted": null,
+              "ok": true,
+              "kind": "ok"
+            },
+            "testability": {
+              "expected": "partial",
+              "predicted": "partial",
+              "ok": true,
+              "kind": "ok"
+            }
+          },
+          "predicted_rules": 2,
+          "labelled_rules": 2,
+          "all_fields_ok": true
+        },
+        {
+          "id": "lab-23",
+          "fields": {
+            "instrument_symbol": {
+              "expected": "SC",
+              "predicted": "SC",
+              "ok": true,
+              "kind": "ok"
+            },
+            "direction": {
+              "expected": "neutral",
+              "predicted": "neutral",
+              "ok": true,
+              "kind": "ok"
+            },
+            "entry_expr": {
+              "expected": null,
+              "predicted": null,
+              "ok": true,
+              "kind": "ok"
+            },
+            "stop_expr": {
+              "expected": null,
+              "predicted": null,
+              "ok": true,
+              "kind": "ok"
+            },
+            "exit_expr": {
+              "expected": null,
+              "predicted": null,
+              "ok": true,
+              "kind": "ok"
+            },
+            "horizon_days": {
+              "expected": null,
+              "predicted": null,
+              "ok": true,
+              "kind": "ok"
+            },
+            "testability": {
+              "expected": "neutral",
+              "predicted": "neutral",
+              "ok": true,
+              "kind": "ok"
+            }
+          },
+          "predicted_rules": 1,
+          "labelled_rules": 1,
+          "all_fields_ok": true
+        },
+        {
+          "id": "lab-24",
+          "fields": {
+            "instrument_symbol": {
+              "expected": null,
+              "predicted": null,
+              "ok": true,
+              "kind": "ok"
+            },
+            "direction": {
+              "expected": "long",
+              "predicted": "long",
+              "ok": true,
+              "kind": "ok"
+            },
+            "entry_expr": {
+              "expected": null,
+              "predicted": null,
+              "ok": true,
+              "kind": "ok"
+            },
+            "stop_expr": {
+              "expected": null,
+              "predicted": null,
+              "ok": true,
+              "kind": "ok"
+            },
+            "exit_expr": {
+              "expected": null,
+              "predicted": null,
+              "ok": true,
+              "kind": "ok"
+            },
+            "horizon_days": {
+              "expected": null,
+              "predicted": null,
+              "ok": true,
+              "kind": "ok"
+            },
+            "testability": {
+              "expected": "none",
+              "predicted": "none",
+              "ok": true,
+              "kind": "ok"
+            }
+          },
+          "predicted_rules": 1,
+          "labelled_rules": 1,
+          "all_fields_ok": true
+        },
+        {
+          "id": "lab-25",
+          "fields": {
+            "instrument_symbol": {
+              "expected": "IC",
+              "predicted": "IC",
+              "ok": true,
+              "kind": "ok"
+            },
+            "direction": {
+              "expected": null,
+              "predicted": null,
+              "ok": true,
+              "kind": "ok"
+            },
+            "entry_expr": {
+              "expected": null,
+              "predicted": null,
+              "ok": true,
+              "kind": "ok"
+            },
+            "stop_expr": {
+              "expected": null,
+              "predicted": null,
+              "ok": true,
+              "kind": "ok"
+            },
+            "exit_expr": {
+              "expected": null,
+              "predicted": null,
+              "ok": true,
+              "kind": "ok"
+            },
+            "horizon_days": {
+              "expected": null,
+              "predicted": null,
+              "ok": true,
+              "kind": "ok"
+            },
+            "testability": {
+              "expected": "none",
+              "predicted": "none",
+              "ok": true,
+              "kind": "ok"
+            }
+          },
+          "predicted_rules": 1,
+          "labelled_rules": 1,
+          "all_fields_ok": true
+        },
+        {
+          "id": "lab-26",
+          "fields": {
+            "instrument_symbol": {
+              "expected": null,
+              "predicted": null,
+              "ok": true,
+              "kind": "ok"
+            },
+            "direction": {
+              "expected": "long",
+              "predicted": "long",
+              "ok": true,
+              "kind": "ok"
+            },
+            "entry_expr": {
+              "expected": null,
+              "predicted": null,
+              "ok": true,
+              "kind": "ok"
+            },
+            "stop_expr": {
+              "expected": null,
+              "predicted": null,
+              "ok": true,
+              "kind": "ok"
+            },
+            "exit_expr": {
+              "expected": "close >= 95000",
+              "predicted": "close >= 95000",
+              "ok": true,
+              "kind": "ok"
+            },
+            "horizon_days": {
+              "expected": null,
+              "predicted": null,
+              "ok": true,
+              "kind": "ok"
+            },
+            "testability": {
+              "expected": "none",
+              "predicted": "none",
+              "ok": true,
+              "kind": "ok"
+            }
+          },
+          "predicted_rules": 1,
+          "labelled_rules": 1,
+          "all_fields_ok": true
+        }
+      ],
+      "rule_count_mismatches": 0,
+      "overall_exact_match": 1.0,
+      "samples_all_fields_correct": 26,
+      "samples_all_fields_correct_ci95_low": 0.8677,
+      "sufficient_sample_size": false,
+      "sample_size_note": "perfect per-field rates on 26 samples give a 95% lower bound of about 0.8677; 40+ samples are needed before an exact-match rate reads as evidence rather than as absence of counter-examples"
+    }
+  },
+  "backtest": {
+    "baseline": "hold",
+    "cost_bps": 3.0,
+    "slippage_bps": 2.0,
+    "min_trades": 12,
+    "trades": [
+      {
+        "rule_id": "op-001-r01",
+        "symbol": "RB",
+        "direction": "long",
+        "status": "traded",
+        "entry_date": "20240109",
+        "exit_date": "20240122",
+        "horizon_end_date": "20240122",
+        "horizon_end_price": 3902.0,
+        "entry_price": 3950.0,
+        "exit_price": 3902.0,
+        "held_bars": 10,
+        "gross_return": -0.012152,
+        "cost": 0.001,
+        "net_return": -0.013152,
+        "exit_reason": "horizon",
+        "signal_basis": "price_condition",
+        "stop_used": true,
+        "exit_used": true,
+        "baseline_return": -0.013152,
+        "edge": -0.0
+      },
+      {
+        "rule_id": "op-002-r01",
+        "symbol": "I",
+        "direction": "short",
+        "status": "traded",
+        "entry_date": "20240312",
+        "exit_date": "20240314",
+        "horizon_end_date": "20240314",
+        "horizon_end_price": 798.0,
+        "entry_price": 828.5,
+        "exit_price": 798.0,
+        "held_bars": 3,
+        "gross_return": 0.036814,
+        "cost": 0.001,
+        "net_return": 0.035814,
+        "exit_reason": "horizon",
+        "signal_basis": "price_condition",
+        "stop_used": true,
+        "exit_used": false,
+        "baseline_return": -0.037814,
+        "edge": 0.073628
+      },
+      {
+        "rule_id": "op-003-r01",
+        "symbol": "RB",
+        "direction": "long",
+        "status": "traded",
+        "entry_date": "20240221",
+        "exit_date": "20240308",
+        "horizon_end_date": "20240319",
+        "horizon_end_price": 3573.0,
+        "entry_price": 3753.0,
+        "exit_price": 3691.0,
+        "held_bars": 13,
+        "gross_return": -0.01652,
+        "cost": 0.001,
+        "net_return": -0.01752,
+        "exit_reason": "stop_loss",
+        "signal_basis": "price_condition",
+        "stop_used": true,
+        "exit_used": true,
+        "baseline_return": -0.048962,
+        "edge": 0.031442
+      },
+      {
+        "rule_id": "op-004-r01",
+        "symbol": "I",
+        "direction": "long",
+        "status": "traded",
+        "entry_date": "20240116",
+        "exit_date": "20240122",
+        "horizon_end_date": "20240122",
+        "horizon_end_price": 952.0,
+        "entry_price": 931.0,
+        "exit_price": 952.0,
+        "held_bars": 5,
+        "gross_return": 0.022556,
+        "cost": 0.001,
+        "net_return": 0.021556,
+        "exit_reason": "horizon",
+        "signal_basis": "price_condition",
+        "stop_used": false,
+        "exit_used": false,
+        "baseline_return": 0.021556,
+        "edge": -0.0
+      },
+      {
+        "rule_id": "op-007-r01",
+        "symbol": "I",
+        "direction": "long",
+        "status": "traded",
+        "entry_date": "20240123",
+        "exit_date": "20240123",
+        "horizon_end_date": "20240129",
+        "horizon_end_price": 998.5,
+        "entry_price": 949.5,
+        "exit_price": 965.5,
+        "held_bars": 1,
+        "gross_return": 0.016851,
+        "cost": 0.001,
+        "net_return": 0.015851,
+        "exit_reason": "target",
+        "signal_basis": "market",
+        "stop_used": true,
+        "exit_used": true,
+        "baseline_return": 0.050606,
+        "edge": -0.034755
+      },
+      {
+        "rule_id": "op-008-r01",
+        "symbol": "RB",
+        "direction": "short",
+        "status": "traded",
+        "entry_date": "20240227",
+        "exit_date": "20240227",
+        "horizon_end_date": "20240304",
+        "horizon_end_price": 3762.0,
+        "entry_price": 3741.0,
+        "exit_price": 3824.0,
+        "held_bars": 1,
+        "gross_return": -0.022187,
+        "cost": 0.001,
+        "net_return": -0.023187,
+        "exit_reason": "stop_loss",
+        "signal_basis": "price_condition",
+        "stop_used": true,
+        "exit_used": true,
+        "baseline_return": 0.004613,
+        "edge": -0.0278
+      },
+      {
+        "rule_id": "op-009-r01",
+        "symbol": "I",
+        "direction": "short",
+        "status": "traded",
+        "entry_date": "20240312",
+        "exit_date": "20240313",
+        "horizon_end_date": "20240318",
+        "horizon_end_price": 803.0,
+        "entry_price": 828.5,
+        "exit_price": 807.5,
+        "held_bars": 2,
+        "gross_return": 0.025347,
+        "cost": 0.001,
+        "net_return": 0.024347,
+        "exit_reason": "target",
+        "signal_basis": "price_condition",
+        "stop_used": false,
+        "exit_used": true,
+        "baseline_return": -0.031779,
+        "edge": 0.056126
+      },
+      {
+        "rule_id": "op-010-r01",
+        "symbol": "RB",
+        "direction": "long",
+        "status": "traded",
+        "entry_date": "20240130",
+        "exit_date": "20240202",
+        "horizon_end_date": "20240205",
+        "horizon_end_price": 3833.0,
+        "entry_price": 3968.0,
+        "exit_price": 3825.0,
+        "held_bars": 4,
+        "gross_return": -0.036038,
+        "cost": 0.001,
+        "net_return": -0.037038,
+        "exit_reason": "stop_loss",
+        "signal_basis": "price_condition",
+        "stop_used": true,
+        "exit_used": true,
+        "baseline_return": -0.035022,
+        "edge": -0.002016
+      },
+      {
+        "rule_id": "op-011-r01",
+        "symbol": "I",
+        "direction": "long",
+        "status": "traded",
+        "entry_date": "20240131",
+        "exit_date": "20240221",
+        "horizon_end_date": "20240306",
+        "horizon_end_price": 881.5,
+        "entry_price": 980.0,
+        "exit_price": 893.0,
+        "held_bars": 10,
+        "gross_return": -0.088776,
+        "cost": 0.001,
+        "net_return": -0.089776,
+        "exit_reason": "stop_loss",
+        "signal_basis": "market",
+        "stop_used": true,
+        "exit_used": true,
+        "baseline_return": -0.10151,
+        "edge": 0.011734
+      },
+      {
+        "rule_id": "op-012-r01",
+        "symbol": "RB",
+        "direction": "short",
+        "status": "traded",
+        "entry_date": "20240202",
+        "exit_date": "20240206",
+        "horizon_end_date": "20240206",
+        "horizon_end_price": 3836.0,
+        "entry_price": 3868.0,
+        "exit_price": 3836.0,
+        "held_bars": 3,
+        "gross_return": 0.008273,
+        "cost": 0.001,
+        "net_return": 0.007273,
+        "exit_reason": "horizon",
+        "signal_basis": "market",
+        "stop_used": false,
+        "exit_used": true,
+        "baseline_return": -0.009273,
+        "edge": 0.016546
+      },
+      {
+        "rule_id": "op-013-r01",
+        "symbol": "I",
+        "direction": "long",
+        "status": "traded",
+        "entry_date": "20240206",
+        "exit_date": "20240220",
+        "horizon_end_date": "20240220",
+        "horizon_end_price": 909.5,
+        "entry_price": 938.5,
+        "exit_price": 909.5,
+        "held_bars": 5,
+        "gross_return": -0.0309,
+        "cost": 0.001,
+        "net_return": -0.0319,
+        "exit_reason": "horizon",
+        "signal_basis": "price_condition",
+        "stop_used": true,
+        "exit_used": true,
+        "baseline_return": -0.0319,
+        "edge": 0.0
+      },
+      {
+        "rule_id": "op-015-r01",
+        "symbol": "I",
+        "direction": "short",
+        "status": "traded",
+        "entry_date": "20240221",
+        "exit_date": "20240227",
+        "horizon_end_date": "20240227",
+        "horizon_end_price": 897.5,
+        "entry_price": 907.0,
+        "exit_price": 897.5,
+        "held_bars": 5,
+        "gross_return": 0.010474,
+        "cost": 0.001,
+        "net_return": 0.009474,
+        "exit_reason": "horizon",
+        "signal_basis": "price_condition",
+        "stop_used": true,
+        "exit_used": true,
+        "baseline_return": -0.011474,
+        "edge": 0.020948
+      }
+    ],
+    "skips": [
+      {
+        "rule_id": "op-005-r01",
+        "reason": "testability=neutral"
+      },
+      {
+        "rule_id": "op-014-r01",
+        "reason": "entry condition never triggered within available bars"
+      },
+      {
+        "rule_id": "op-016-r01",
+        "reason": "testability=neutral"
+      }
+    ],
+    "metrics": {
+      "trades": 12,
+      "skipped": 3,
+      "win_rate": 0.5,
+      "mean_net_return": -0.008188,
+      "total_net_return": -0.098258,
+      "sharpe": -1.612,
+      "sharpe_per_trade": -0.235,
+      "sharpe_basis": "per-trade mean/sd scaled by sqrt(trades_per_year), trades_per_year = 244 / mean(held_bars=5.17)",
+      "sharpe_trades_per_year": 47.226,
+      "sharpe_held_bars_coverage": "12/12",
+      "max_drawdown": -0.145278,
+      "mean_baseline_return": -0.020343,
+      "exit_reasons": {
+        "horizon": 6,
+        "stop_loss": 4,
+        "target": 2
+      }
+    },
+    "edge": {
+      "mean": 0.012154,
+      "ci_low": -0.004511,
+      "ci_high": 0.028479,
+      "n": 12
+    },
+    "verdict": "inconclusive"
+  },
+  "scope_declaration": {
+    "scope_version": "scope-v1",
+    "declared_before_backtest": true,
+    "data_mode": "landed",
+    "date_range": {
+      "start": "20240102",
+      "end": "20240628"
+    },
+    "declared_symbols": [
+      "I",
+      "RB"
+    ],
+    "supported_universe": [
+      "RB",
+      "I",
+      "HC",
+      "SS",
+      "J",
+      "JM",
+      "CU",
+      "AL",
+      "ZN",
+      "NI",
+      "PB",
+      "SN",
+      "AU",
+      "AG",
+      "SC",
+      "FU",
+      "BU",
+      "M",
+      "Y",
+      "P",
+      "RM",
+      "OI",
+      "MA",
+      "SR",
+      "CF",
+      "FG",
+      "SA",
+      "UR",
+      "PP",
+      "L",
+      "C",
+      "CS",
+      "JD",
+      "AP",
+      "CJ",
+      "PK",
+      "SF",
+      "SM",
+      "SP",
+      "RU",
+      "IF",
+      "IH",
+      "IC",
+      "IM"
+    ],
+    "symbols_outside_universe": [],
+    "unmapped_rules": [],
+    "baseline": "hold",
+    "cost_model": {
+      "commission_bps": 3.0,
+      "slippage_bps": 2.0,
+      "sides": 2
+    },
+    "min_trades_for_verdict": 12,
+    "replay_equivalence": {
+      "what_this_is": "daily bar replay (close-to-close with next-open fills)",
+      "what_this_is_not": [
+        "a futures simulation contest / matching engine",
+        "intraday or tick-level execution",
+        "margin, force-liquidation or capital-competition modelling"
+      ],
+      "why_equivalent": "the rule set is declared in trading-day horizons and daily-close triggers, so a daily replay resolves every decision point the rules can express",
+      "where_it_breaks": [
+        "rules that depend on intraday touch order",
+        "limit-locked sessions where no fill is possible",
+        "portfolio-level capital allocation across simultaneous rules",
+        "roll gaps from unadjusted dominant stitching"
+      ]
+    },
+    "extraction_config_hash": "8f9058b5a70c835d6c30ae807c24c4e04d24d9c0fcef5ca62266ec43a39cb701",
+    "in_scope": [
+      "daily-close rules on I, RB over 20240102..20240628",
+      "horizons expressed in trading days",
+      "bars strictly after each opinion's published_at"
+    ],
+    "out_of_scope": [
+      "futures simulation contest / live matching",
+      "intraday entries, limit-order fills, auction mechanics",
+      "position sizing across simultaneous rules",
+      "products outside the declared symbol list",
+      "roll adjustment (unadjusted dominant stitching is used)"
+    ],
+    "fails_when": [
+      "fewer than 12 closed trades",
+      "a rule has no numeric level and no explicit direction",
+      "bars are missing for a declared symbol"
+    ],
+    "scope_hash": "f124f5bbeb03be69bd2875d2e75b7d8b258b9ea56cbed9e09467a186c1749650"
+  },
+  "scope_verification": {
+    "scope_hash": "f124f5bbeb03be69bd2875d2e75b7d8b258b9ea56cbed9e09467a186c1749650",
+    "symbols_declared": [
+      "I",
+      "RB"
+    ],
+    "symbols_with_bars": [
+      "I",
+      "RB"
+    ],
+    "symbols_traded": [
+      "I",
+      "RB"
+    ],
+    "trade_span": {
+      "first": "20240109",
+      "last": "20240312"
+    },
+    "declared_range": [
+      "20240102",
+      "20240628"
+    ],
+    "skipped_rules": 3,
+    "violations": [],
+    "honoured": true
+  },
+  "value_assessment": {
+    "decisions_created": 12,
+    "decision_change_examples": [
+      {
+        "rule_id": "op-001-r01",
+        "would_trade": "long RB",
+        "baseline_alternative": "hold",
+        "net_return": -0.013152,
+        "baseline_return": -0.013152
+      },
+      {
+        "rule_id": "op-002-r01",
+        "would_trade": "short I",
+        "baseline_alternative": "hold",
+        "net_return": 0.035814,
+        "baseline_return": -0.037814
+      },
+      {
+        "rule_id": "op-003-r01",
+        "would_trade": "long RB",
+        "baseline_alternative": "hold",
+        "net_return": -0.01752,
+        "baseline_return": -0.048962
+      },
+      {
+        "rule_id": "op-004-r01",
+        "would_trade": "long I",
+        "baseline_alternative": "hold",
+        "net_return": 0.021556,
+        "baseline_return": 0.021556
+      },
+      {
+        "rule_id": "op-007-r01",
+        "would_trade": "long I",
+        "baseline_alternative": "hold",
+        "net_return": 0.015851,
+        "baseline_return": 0.050606
+      }
+    ],
+    "effect_size": {
+      "mean_paired_edge": 0.012154,
+      "ci_low": -0.004511,
+      "ci_high": 0.028479,
+      "n_trades": 12,
+      "win_rate": 0.5,
+      "sharpe": -1.612,
+      "max_drawdown": -0.145278
+    },
+    "verdict": "inconclusive",
+    "note": "verdict=negative or inconclusive is a valid result; it bounds where the signal works."
+  },
+  "applicability": {
+    "declared_before_run": true,
+    "scope_hash": "f124f5bbeb03be69bd2875d2e75b7d8b258b9ea56cbed9e09467a186c1749650",
+    "in_scope": [
+      "symbols declared and traded: I, RB",
+      "declared evaluation window: 20240102..20240628",
+      "actual trade span: 20240109..20240312",
+      "data mode: landed"
+    ],
+    "out_of_scope": [
+      "futures simulation contest / live matching (this is daily bar replay)",
+      "intraday entries, limit-order fills, auction mechanics",
+      "position sizing across simultaneous rules",
+      "products outside the declared list: I, RB",
+      "roll adjustment (unadjusted dominant stitching is used)",
+      "rules with no mapped symbol: 0"
+    ],
+    "replay_equivalence": {
+      "what_this_is": "daily bar replay (close-to-close with next-open fills)",
+      "what_this_is_not": [
+        "a futures simulation contest / matching engine",
+        "intraday or tick-level execution",
+        "margin, force-liquidation or capital-competition modelling"
+      ],
+      "why_equivalent": "the rule set is declared in trading-day horizons and daily-close triggers, so a daily replay resolves every decision point the rules can express",
+      "where_it_breaks": [
+        "rules that depend on intraday touch order",
+        "limit-locked sessions where no fill is possible",
+        "portfolio-level capital allocation across simultaneous rules",
+        "roll gaps from unadjusted dominant stitching"
+      ]
+    },
+    "scope_honoured": true,
+    "scope_violations": [],
+    "fails_when": [
+      "fewer than 12 closed trades",
+      "the opinion has no numeric levels and no explicit direction",
+      "bars are missing for a declared symbol",
+      "a trade falls outside the declared window or symbol list"
+    ],
+    "coverage": {
+      "documents": 16,
+      "rules_total": 15,
+      "rules_full": 6,
+      "rules_partial": 7,
+      "rules_neutral": 2,
+      "unruleable": 1,
+      "ruleable_share": 0.9375
+    }
+  }
+}

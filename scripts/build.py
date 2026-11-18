@@ -28,9 +28,14 @@ try:  # package import
         SHORT_WORDS,
         _has_word,
         clamp_text,
+        direction_candidates,
         find_direction,
         find_horizon,
         find_instrument,
+        find_instruments,
+        find_percent_levels,
+        instrument_spans,
+        mask_percent_levels,
         parse_levels,
     )
 except ImportError:  # direct execution (also under ``python -I``)
@@ -41,13 +46,23 @@ except ImportError:  # direct execution (also under ``python -I``)
         SHORT_WORDS,
         _has_word,
         clamp_text,
+        direction_candidates,
         find_direction,
         find_horizon,
         find_instrument,
+        find_instruments,
+        find_percent_levels,
+        instrument_spans,
+        mask_percent_levels,
         parse_levels,
     )
 
-VERSION = "0.3.0"
+# Bumped with the 0.7.0 re-freeze: negation no longer flips the sign, one
+# sentence can yield one rule per instrument, percentage levels stop becoming
+# prices, and bare codes map. Those change what the extractor emits, so the
+# fingerprint must change too -- otherwise an 0.6.0 run and a 0.7.0 run look
+# comparable to `compare_baseline` when their rules are not the same objects.
+VERSION = "0.4.1"
 
 # ---------------------------------------------------------------------------
 # Frozen default policy
@@ -143,15 +158,6 @@ def _validate_doc(doc: Dict[str, Any]) -> None:
 # ---------------------------------------------------------------------------
 # 2. Extraction
 # ---------------------------------------------------------------------------
-def _split_sentences(text: str) -> List[str]:
-    """Split on Chinese and English sentence terminators, keeping decimals intact."""
-    if re.search(r"[一-鿿]", text):
-        parts = [p.strip() for p in _SENT_SPLIT.split(text) if p and p.strip()]
-    else:
-        parts = [p.strip() for p in _SENT_SPLIT_EN.split(text) if p and p.strip()]
-    return parts or [text.strip()]
-
-
 def _resolve_direction(text: str, levels: Dict[str, Any]):
     """Return ``(direction, word, negated, inferred)``.
 
@@ -159,11 +165,17 @@ def _resolve_direction(text: str, levels: Dict[str, Any]):
     target with no downside target is a long view, and the mirror image is a
     short view. A trigger level alone is not directional (``站上``/``跌破``
     describe the condition, not the side), so it is never used to infer.
+
+    A **negated** direction word does not flip the sign. ``螺纹钢不再看多`` used
+    to come back as ``short``, which invented a bearish view the author never
+    stated and then backtested it. Negating a long is standing aside, so the
+    answer is ``neutral`` — which ``assess`` scores as a real signal (no
+    position) instead of a fabricated one. The negated word is still reported.
     """
     direction, word, negated = find_direction(text)
     if direction is not None:
         if negated:
-            direction = {"long": "short", "short": "long", "neutral": "neutral"}[direction]
+            return "neutral", word, True, False
         return direction, word, negated, False
 
     if levels["target_up"] and not levels["target_down"]:
@@ -173,13 +185,17 @@ def _resolve_direction(text: str, levels: Dict[str, Any]):
     return None, None, False, False
 
 
-def extract_rule(sentence: str, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-    """Extract one rule from one sentence. Pure function."""
-    ctx = context or {}
-    text = clamp_text(sentence)
+def _extract_span(sentence: str, text: str, forced_instrument: Optional[Dict[str, Any]],
+                  ctx: Dict[str, Any]) -> Dict[str, Any]:
+    """Extract one rule from one instrument's span of one sentence. Pure function.
+
+    ``text`` is the slice of ``sentence`` that speaks about ``forced_instrument``;
+    scanning levels inside that slice instead of the whole sentence is what keeps
+    iron ore's 840 from becoming rebar's stop.
+    """
     notes: List[Dict[str, str]] = []
 
-    instrument = find_instrument(text)
+    instrument = copy.deepcopy(forced_instrument) if forced_instrument else find_instrument(text)
     inherited_instrument = False
     if instrument is None and ctx.get("instrument"):
         instrument = copy.deepcopy(ctx["instrument"])
@@ -188,21 +204,46 @@ def extract_rule(sentence: str, context: Optional[Dict[str, Any]] = None) -> Dic
             {"field": "instrument", "issue": "not stated in this sentence; inherited from an earlier sentence"}
         )
 
-    horizon = find_horizon(text)
+    # Percentages are read separately and removed from the level scan: without
+    # this, ``止损3%`` became ``close < 3`` — a stop that can never trigger, so
+    # the planned loss was backtested as a win, and nothing said so.
+    percents = find_percent_levels(text)
+    scan = mask_percent_levels(text)
+
+    horizon = find_horizon(scan)
     inherited_horizon = False
     if horizon is None and ctx.get("horizon"):
         horizon = copy.deepcopy(ctx["horizon"])
         inherited_horizon = True
 
-    levels = parse_levels(text)
-    direction, word, negated, inferred = _resolve_direction(text, levels)
+    levels = parse_levels(scan)
+    direction, word, negated, inferred = _resolve_direction(scan, levels)
 
-    has_long = any(_has_word(text, w) for w in LONG_WORDS)
-    has_short = any(_has_word(text, w) for w in SHORT_WORDS)
+    for pct in percents:
+        notes.append({
+            "field": pct["field"],
+            "issue": "stated as a percentage (%s); the daily-close contract cannot "
+                     "execute a relative level, so the field stays unset" % pct["phrase"],
+        })
+
+    has_long = any(_has_word(scan, w) for w in LONG_WORDS)
+    has_short = any(_has_word(scan, w) for w in SHORT_WORDS)
     if has_long and has_short:
         notes.append({"field": "direction", "issue": "both long and short wording in one sentence"})
-    if negated:
-        notes.append({"field": "direction", "issue": f"negation before '{word}'; direction flipped"})
+
+    # Negation is always reported, not only when it decides the outcome: a
+    # labeller reviewing ``不看空...才算转多`` needs to see that a negation was
+    # parsed and resolved, otherwise the trace looks like a plain long.
+    negated_words = [c for c in direction_candidates(scan) if c[3]]
+    if negated_words:
+        _start, _label, _word, _neg = negated_words[0]
+        if direction == "neutral":
+            issue = ("negation before '%s'; no side is asserted, so this is a stand-aside "
+                     "(neutral) rule, not the opposite one" % _word)
+        else:
+            issue = ("negation before '%s'; direction taken from the unnegated wording '%s'"
+                     % (_word, word))
+        notes.append({"field": "direction", "issue": issue})
     if inferred:
         notes.append(
             {"field": "direction", "issue": "no explicit long/short wording; inferred from the stated profit target"}
@@ -211,7 +252,7 @@ def extract_rule(sentence: str, context: Optional[Dict[str, Any]] = None) -> Dic
     entry_trigger = None
     pullback = re.search(
         PULLBACK_KW + r"(?:\s*(?:到|至|在|at|to|around|near))?\s*(\d+(?:\.\d+)?)",
-        text,
+        scan,
         re.IGNORECASE,
     )
     if direction == "long":
@@ -265,7 +306,11 @@ def extract_rule(sentence: str, context: Optional[Dict[str, Any]] = None) -> Dic
                 }
             )
 
-    if entry_trigger is None and direction in ("long", "short"):
+    if entry_trigger is None and direction in ("long", "short") and instrument is not None:
+        # The default is a *tradeable* substitution, so it requires a tradeable
+        # instrument. Emitting ``market_on_next_open`` for "50ETF购3月2500看多"
+        # handed an unruleable item an executable order it can never place, which
+        # reads as a ready-to-run signal rather than as an unmapped name.
         entry_trigger = {
             "type": "market",
             "expr": "market_on_next_open",
@@ -320,6 +365,63 @@ def extract_rule(sentence: str, context: Optional[Dict[str, Any]] = None) -> Dic
             "source_phrase": target_down[1],
         }
 
+    # A long cannot exit at or below its own breakout level, and a short cannot
+    # stop below its own breakdown level: the condition is already satisfied the
+    # moment the position is filled. Drop those and say so, instead of letting a
+    # same-bar round trip look like free profit.
+    entry_level = _level_value(entry_trigger)
+    if direction in ("long", "short") and entry_level:
+        for _field, _obj in (("stop_loss", stop_loss), ("exit_rule", exit_rule)):
+            _value = _level_value(_obj)
+            if _value is None:
+                continue
+            if direction == "long":
+                # stop must sit below the entry, target above it
+                bad = _value >= entry_level if _field == "stop_loss" else _value <= entry_level
+            else:
+                bad = _value <= entry_level if _field == "stop_loss" else _value >= entry_level
+            if bad:
+                notes.append({
+                    "field": _field,
+                    "issue": "%s level %g is on the wrong side of the %s entry level %g; "
+                             "it would trigger the bar the position fills, dropped"
+                             % (_field, _value, direction, entry_level),
+                })
+                if _field == "stop_loss":
+                    stop_loss = None
+                else:
+                    exit_rule = None
+
+    # inside one rule belong to one instrument, so a threshold that differs from
+    # the others by more than 5x cannot be a price for this product. It is
+    # dropped rather than kept, because a never-triggering stop silently turns
+    # the author's planned loss into a reported win.
+    for _field, _obj in (("entry_trigger", entry_trigger), ("stop_loss", stop_loss),
+                         ("exit_rule", exit_rule)):
+        if _obj is None:
+            continue
+        _value = _level_value(_obj)
+        if _value is None:
+            continue
+        peers = [v for v in (_level_value(o) for o in
+                            (entry_trigger, stop_loss, exit_rule) if o is not None)
+                 if v is not None]
+        if len(peers) >= 2 and max(peers) / min(peers) > 5:
+            median = sorted(peers)[len(peers) // 2]
+            if max(median / _value, _value / median) > 5:
+                notes.append({
+                    "field": _field,
+                    "issue": "level %g is more than 5x away from the other levels of this "
+                             "rule (%s); not a plausible price for the instrument, dropped"
+                             % (_value, ", ".join("%g" % p for p in peers)),
+                })
+                if _field == "entry_trigger":
+                    entry_trigger = None
+                elif _field == "stop_loss":
+                    stop_loss = None
+                else:
+                    exit_rule = None
+
     return {
         "rule_id": None,
         "schema_version": SCHEMA_VERSION,
@@ -336,8 +438,55 @@ def extract_rule(sentence: str, context: Optional[Dict[str, Any]] = None) -> Dic
         "exit_rule": exit_rule,
         "position_size": None,
         "invalidation": None,
+        "percent_levels": percents,
         "ambiguity": notes,
     }
+
+
+def extract_rules(sentence: str, context: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+    """Every rule in ``sentence``. Pure function.
+
+    One sentence can carry one rule per instrument: ``螺纹钢多头铁矿空头`` names
+    two products with two directions. Returning only the first (the old
+    behaviour) both lost the second rule and leaked the second product's price
+    into the first rule's stop.
+    """
+    ctx = context or {}
+    text = clamp_text(sentence)
+    spans = instrument_spans(text)
+
+    if len(spans) > 1:
+        rules = []
+        for payload, span in spans:
+            others = [p["raw"] for p, _ in spans if p["symbol"] != payload["symbol"]]
+            rule = _extract_span(sentence, span, payload, ctx)
+            rule["ambiguity"].append({
+                "field": "instrument",
+                "issue": "one sentence carries views on several instruments (%s); "
+                         "this rule only reads the clauses that name %s"
+                         % (", ".join(others), payload["raw"]),
+            })
+            rules.append(rule)
+        return rules
+
+    if len(spans) == 1:
+        # Single instrument: scan the whole sentence, exactly as before.
+        return [_extract_span(sentence, text, spans[0][0], ctx)]
+
+    return [_extract_span(sentence, text, None, ctx)]
+
+
+def extract_rule(sentence: str, context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """The first rule of ``sentence``. Kept for callers that handle one rule."""
+    return extract_rules(sentence, context)[0]
+
+
+def _level_value(obj: Optional[Dict[str, Any]]) -> Optional[float]:
+    """The numeric price inside a ``close < N`` style expression."""
+    if not obj or obj.get("type") != "price_condition":
+        return None
+    m = re.search(r"(\d+(?:\.\d+)?)\s*$", str(obj.get("expr") or ""))
+    return float(m.group(1)) if m else None
 
 
 # ---------------------------------------------------------------------------
@@ -355,7 +504,16 @@ def assess(rule: Dict[str, Any], apply_defaults: bool = False,
     if out["instrument"] is None or out["direction"] is None:
         out["missing_fields"] = missing
         out["testability"] = "none"
-        out["reason"] = "no instrument or no direction — nothing to trade"
+        # ``no instrument or no direction`` told an A-share reader nothing: the
+        # direction was perfectly clear, the stock code simply is not in the
+        # futures table. Say which of the two is actually missing.
+        if out["instrument"] is None and out["direction"] is None:
+            out["reason"] = "no instrument and no direction — nothing to trade"
+        elif out["instrument"] is None:
+            out["reason"] = ("no instrument in the futures alias/code table"
+                             " (equity names are out of scope)")
+        else:
+            out["reason"] = "no direction wording and no profit target to infer one from"
         return out
 
     if out["direction"] == "neutral":
@@ -368,6 +526,15 @@ def assess(rule: Dict[str, Any], apply_defaults: bool = False,
     horizon_stated = "horizon" not in missing
     risk_stated = out["stop_loss"] is not None or out["exit_rule"] is not None
     out["missing_fields"] = missing
+
+    # The market-on-open fallback is applied at extraction, before any policy
+    # switch, and the six-field table promises it is recorded in ``assumed``.
+    # Without this the substitution was only visible as prose in ``ambiguity``,
+    # so no machine check could ever tell an author's trigger from our default.
+    entry = out["entry_trigger"]
+    if entry is not None and entry.get("expr") == "market_on_next_open":
+        out["assumed"].append({"field": "entry_trigger", "value": "market_on_next_open",
+                               "policy": policy["version"], "stage": "extraction"})
 
     if apply_defaults:
         if out["entry_trigger"] is None:
@@ -409,17 +576,25 @@ def extract_document(doc: Dict[str, Any], apply_defaults: bool = False,
     rules: List[Dict[str, Any]] = []
     unruleable: List[Dict[str, Any]] = []
 
-    for idx, sentence in enumerate(_split_sentences(text), start=1):
-        rule = assess(extract_rule(sentence, context), apply_defaults=apply_defaults, policy=policy)
-        rule["rule_id"] = f"{doc.get('id') or 'doc'}-r{idx:02d}"
-        rule["published_at"] = doc.get("published_at")
-        rule["source"] = doc.get("source")
-        rule["source_document_text"] = text
-        (rules if rule["testability"] != "none" else unruleable).append(rule)
-        if rule["instrument"] is not None:
-            context["instrument"] = rule["instrument"]
-        if rule["horizon"] is not None:
-            context["horizon"] = rule["horizon"]
+    for sentence in _split_sentences(text):
+        extracted = extract_rules(sentence, context)
+        for rule in extracted:
+            assessed = assess(rule, apply_defaults=apply_defaults, policy=policy)
+            # A sentence can now yield several rules, so ids count rules.
+            assessed["rule_id"] = "%s-r%02d" % (
+                doc.get("id") or "doc", len(rules) + len(unruleable) + 1)
+            assessed["published_at"] = doc.get("published_at")
+            assessed["source"] = doc.get("source")
+            assessed["source_document_text"] = text
+            (rules if assessed["testability"] != "none" else unruleable).append(assessed)
+
+        # Context inheritance follows the last sentence-level mention, matching
+        # the previous single-rule behaviour.
+        if extracted:
+            if extracted[-1].get("instrument") is not None:
+                context["instrument"] = extracted[-1]["instrument"]
+            if extracted[-1].get("horizon") is not None:
+                context["horizon"] = extracted[-1]["horizon"]
 
     return {
         "document_id": doc.get("id"),

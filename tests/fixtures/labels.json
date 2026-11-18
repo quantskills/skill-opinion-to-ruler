@@ -1,5 +1,5 @@
 {
-  "_note": "Human-labelled gold set for the bundled fixture opinions. Labels were written by reading each sentence, not by copying extractor output. null means the text does not state the field.",
+  "_note": "Human-labelled gold set. Labels were written by reading each sentence, not by copying extractor output: a field the sentence does not state is null even when the extractor fills it from the frozen default policy (annotate.py scores that separately as policy_default, so the policy cannot grade its own homework). null means 'the text does not state this field'. Where a sentence states several instruments, labels is a list, one entry per rule, in order of appearance. Coverage includes stand-aside (op-005, op-016, lab-23), withdrawn/reversed wording (op-004, lab-17), percentage stops that must be left empty (lab-18), bare exchange codes and contract numbers (lab-19..lab-21), one rule per instrument (lab-22), and out-of-scope instrument kinds (lab-24 option, lab-25 position management, lab-26 name outside the alias whitelist).",
   "samples": [
     {
       "id": "op-001",
@@ -92,7 +92,7 @@
       "labels": {
         "instrument_symbol": "I",
         "direction": "long",
-        "entry_expr": "market_on_next_open",
+        "entry_expr": null,
         "stop_expr": "close < 860",
         "exit_expr": "close >= 950",
         "horizon_days": null,
@@ -148,7 +148,7 @@
       "labels": {
         "instrument_symbol": "I",
         "direction": "long",
-        "entry_expr": "market_on_next_open",
+        "entry_expr": null,
         "stop_expr": "close < 900",
         "exit_expr": "close >= 1000",
         "horizon_days": 20,
@@ -162,7 +162,7 @@
       "labels": {
         "instrument_symbol": "RB",
         "direction": "short",
-        "entry_expr": "market_on_next_open",
+        "entry_expr": null,
         "stop_expr": null,
         "exit_expr": "close <= 3700",
         "horizon_days": 3,
@@ -223,6 +223,157 @@
         "exit_expr": null,
         "horizon_days": null,
         "testability": "neutral"
+      }
+    },
+    {
+      "id": "lab-17",
+      "text": "螺纹钢不再看多，跌破3780不追。",
+      "published_at": "2024-01-05T08:30:00+08:00",
+      "labels": {
+        "instrument_symbol": "RB",
+        "direction": "neutral",
+        "entry_expr": null,
+        "stop_expr": null,
+        "exit_expr": null,
+        "horizon_days": null,
+        "testability": "neutral"
+      }
+    },
+    {
+      "id": "lab-18",
+      "text": "螺纹钢站上3850做多，目标4100，止损3%。",
+      "published_at": "2024-01-05T08:30:00+08:00",
+      "labels": {
+        "instrument_symbol": "RB",
+        "direction": "long",
+        "entry_expr": "close > 3850",
+        "stop_expr": null,
+        "exit_expr": "close >= 4100",
+        "horizon_days": null,
+        "testability": "partial"
+      }
+    },
+    {
+      "id": "lab-19",
+      "text": "RB看多，站上3850，止损3780。",
+      "published_at": "2024-01-05T08:30:00+08:00",
+      "labels": {
+        "instrument_symbol": "RB",
+        "direction": "long",
+        "entry_expr": "close > 3850",
+        "stop_expr": "close < 3780",
+        "exit_expr": null,
+        "horizon_days": null,
+        "testability": "partial"
+      }
+    },
+    {
+      "id": "lab-20",
+      "text": "I看空，跌破840，止损880。",
+      "published_at": "2024-01-05T08:30:00+08:00",
+      "labels": {
+        "instrument_symbol": "I",
+        "direction": "short",
+        "entry_expr": "close < 840",
+        "stop_expr": "close > 880",
+        "exit_expr": null,
+        "horizon_days": null,
+        "testability": "partial"
+      }
+    },
+    {
+      "id": "lab-21",
+      "text": "RB2405站上3850看多，目标4100，止损3780。",
+      "published_at": "2024-01-05T08:30:00+08:00",
+      "labels": {
+        "instrument_symbol": "RB",
+        "direction": "long",
+        "entry_expr": "close > 3850",
+        "stop_expr": "close < 3780",
+        "exit_expr": "close >= 4100",
+        "horizon_days": null,
+        "testability": "partial"
+      }
+    },
+    {
+      "id": "lab-22",
+      "text": "螺纹钢多头铁矿空头，RB看3850上方，I看840下方。",
+      "published_at": "2024-01-05T08:30:00+08:00",
+      "labels": [
+        {
+          "instrument_symbol": "RB",
+          "direction": "long",
+          "entry_expr": "close > 3850",
+          "stop_expr": null,
+          "exit_expr": null,
+          "horizon_days": null,
+          "testability": "partial"
+        },
+        {
+          "instrument_symbol": "I",
+          "direction": "short",
+          "entry_expr": "close < 840",
+          "stop_expr": null,
+          "exit_expr": null,
+          "horizon_days": null,
+          "testability": "partial"
+        }
+      ]
+    },
+    {
+      "id": "lab-23",
+      "text": "原油这里不建议参与，等右侧确认。",
+      "published_at": "2024-01-05T08:30:00+08:00",
+      "labels": {
+        "instrument_symbol": "SC",
+        "direction": "neutral",
+        "entry_expr": null,
+        "stop_expr": null,
+        "exit_expr": null,
+        "horizon_days": null,
+        "testability": "neutral"
+      }
+    },
+    {
+      "id": "lab-24",
+      "text": "50ETF购3月2500看多。",
+      "published_at": "2024-01-05T08:30:00+08:00",
+      "labels": {
+        "instrument_symbol": null,
+        "direction": "long",
+        "entry_expr": null,
+        "stop_expr": null,
+        "exit_expr": null,
+        "horizon_days": null,
+        "testability": "none"
+      }
+    },
+    {
+      "id": "lab-25",
+      "text": "IC主力5200下方减仓。",
+      "published_at": "2024-01-05T08:30:00+08:00",
+      "labels": {
+        "instrument_symbol": "IC",
+        "direction": null,
+        "entry_expr": null,
+        "stop_expr": null,
+        "exit_expr": null,
+        "horizon_days": null,
+        "testability": "none"
+      }
+    },
+    {
+      "id": "lab-26",
+      "text": "铜价加到三成仓，上看95000。",
+      "published_at": "2024-01-05T08:30:00+08:00",
+      "labels": {
+        "instrument_symbol": null,
+        "direction": "long",
+        "entry_expr": null,
+        "stop_expr": null,
+        "exit_expr": "close >= 95000",
+        "horizon_days": null,
+        "testability": "none"
       }
     }
   ],

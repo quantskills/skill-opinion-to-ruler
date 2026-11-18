@@ -7,11 +7,13 @@
 | 字段 | 类型 | 说明 |
 |---|---|---|
 | `schema_version` | str | `rule-v1`，破坏性变更时递增 |
-| `extractor_version` | str | 抽取器版本，当前 `0.1.0` |
+| `extractor_version` | str | 抽取器版本，当前 `0.4.1`（`scripts/build.py` 的 `VERSION` 常量） |
 | `documents` | list | 每个输入文档一项 |
 | `summary` | dict | 全局计数与 `ruleable_share` |
 | `config` | dict | 本 run 实际生效的配置 |
 | `config_hash` | str | `config` 的 sha256，用于判定两次运行是否可比 |
+
+> `extractor` 版本是**算法指纹**，不是发布号：它进了 `config_hash`，而 `baselines/frozen_baseline.json` 冻结的正是某个 `config_hash` 下的结果。升级技能版本（如 0.5.0→0.6.0）**不应**动 `build.py:VERSION`；动它等于改基线口径，需要一次显式的重冻结决策，否则 `compare` 会正确地拒绝解读 delta。
 
 ## documents[]
 
@@ -29,8 +31,12 @@
 
 | 字段 | 类型 | 说明 |
 |---|---|---|
-| `rule_id` | str | `{document_id}-r{序号}`，按句子顺序编号 |
-| `source_text` | str | 该规则来自的原句 |
+| `rule_id` | str | `{document_id}-r{序号}`，**按规则编号而不是按句子编号**：一句拆出两条时是 `-r01`、`-r02` |
+| `source_text` | str | 该规则来自的原句（一句两标的时两条规则的该字段相同） |
+| `schema_version` | str | 单条规则的契约版本，当前 `rule-v1` |
+| `published_at` | str | 从文档透传，便于下游只拿一条规则也能知道发布时间 |
+| `source` | str/null | 从文档透传的来源标识 |
+| `source_document_text` | str | 整篇原文（`source_text` 是句子，这个是文档） |
 | `instrument` | dict/null | 见下 |
 | `instrument_inherited` | bool | 本句未提标的、从前面句子继承 |
 | `direction` | `long`/`short`/`neutral`/null | 交易方向 |
@@ -43,9 +49,10 @@
 | `exit_rule` | dict/null | 结构同 `entry_trigger` |
 | `position_size` | null/str | 抽取阶段恒为 null；默认策略下为 `equal_weight_unit` |
 | `invalidation` | null | 保留位 |
+| `percent_levels` | list[{field, value, phrase}] | 文本里的**百分比**价位（如 `止损3%`）。`field` 指它本应属于哪个字段；这些值**不进** `expr`，因为日线收盘撮合无法执行相对价 |
 | `missing_fields` | list[str] | 文本未给出的决策字段 |
 | `ambiguity` | list[{field, issue}] | 解析歧义，供标注判断 |
-| `assumed` | list[{field, value, policy}] | 冻结策略补齐了什么 |
+| `assumed` | list[{field, value, policy, stage?}] | 冻结策略补齐了什么。`stage: "extraction"` 表示这条默认在**抽取阶段**就生效（进场条件），没有该键的是 `apply_defaults=True` 才补的（期限、仓位） |
 | `testability` | `full`/`partial`/`neutral`/`none` | 见下 |
 | `reason` | str | 分类理由 |
 
@@ -54,10 +61,11 @@
 | 字段 | 说明 |
 |---|---|
 | `raw` | 文本中的原始称呼 |
-| `symbol` | 品种代码，如 `RB`；具体合约时为 `RB2610` |
-| `exchange` | `SHFE` / `DCE` / `CZCE` / `CFFEX` / `INE`，显式合约代码时为 null |
-| `contract` | `main`（含主力/主连）/ `specific`（带月份）/ `unspecified` |
-| `mapping_rule` | `alias_to_continuous_main` / `alias_to_symbol` / `explicit_contract_code` |
+| `symbol` | **品种代码**，恒为 `RB`、`I` 这种可取数的品种层代码。具体合约写法（`RB2405`）也解析成 `RB`：合约号不是品种，把它当代码会让白名单校验永远对不上 |
+| `contract_code` | str，仅 `contract == "specific"` 时存在，如 `RB2405`，保留作者点的那张合约 |
+| `exchange` | `SHFE` / `DCE` / `CZCE` / `CFFEX` / `INE`。显式合约代码也解析得到交易所（由品种代码反查），不再留 null |
+| `contract` | `main`（含主力/主连）/ `specific`（带月份）/ `unspecified`（只说品种名或裸代码） |
+| `mapping_rule` | `alias_to_continuous_main`（品种名+主力）/ `alias_to_symbol`（品种名）/ `code_to_symbol`（裸代码 `RB`、`I`）/ `contract_to_product`（合约号 `RB2405`→`RB`）/ `context_inherited`（本句无标的，继承上文） |
 
 ### entry_trigger / stop_loss / exit_rule
 
@@ -86,7 +94,7 @@
 config = {
     "apply_defaults": bool,
     "policy": {...},          # 见 DEFAULT_POLICY
-    "extractor": "rule-based-0.1.0",
+    "extractor": "rule-based-0.4.1",
 }
 config_hash = sha256(json.dumps(config, sort_keys=True, ensure_ascii=False))
 ```

@@ -37,15 +37,29 @@ skill-opinion-to-ruler/
 ├── scripts/
 │   ├── build.py         ← run() / validate_input() / 4-layer extraction
 │   ├── common.py        ← instrument, direction, horizon, price lexicons
-│   ├── data_loader.py   ← panda_data channel and CSV fallback
+│   ├── data_loader.py   ← reads local bars only: built files or a caller CSV
+│   ├── mcp_landing.py   ← landing builder (payload parsing / truncation guard / provenance)
 │   ├── backtest.py      ← no-look-ahead simulation, paired baseline, verdict
 │   ├── annotate.py      ← per-field label scoring
-│   └── evaluate.py      ← end-to-end acceptance report
+│   ├── evaluate.py      ← end-to-end acceptance report
+│   └── compare_baseline.py ← read-only guard: re-run vs the frozen anchor, field by field
+├── baselines/           ← frozen reference (the acceptance anchor; committed, shipped)
+│   ├── frozen_baseline.json
+│   └── scope_declaration.json
+├── output/              ← landing spot for regenerated products (runtime, not committed)
 ├── tests/
-│   ├── test_ruler.py    ← 50 cases
-│   └── fixtures/        ← opinions, human labels, offline bars
+│   ├── test_ruler.py          ← 113 cases (extraction / backtest / scope)
+│   ├── test_mcp_landing.py    ← 39 cases (payload parsing, the truncation guard, provenance and stitching attribution)
+│   ├── test_docs.py           ← 18 cases (documented numbers = real runs)
+│   ├── test_baseline_guard.py ← 52 cases (re-run compared field by field vs baselines/, negative paths, packaging guards)
+│   ├── test_preflight.py      ← 3 个用例（前置检查契约：MCP 会话 / 权限探针 / 模型归宿主 / 不过就停并报告缺什么）
+
+│   └── fixtures/
+│       ├── bars_*.csv      ← bundled synthetic bars (used by --fixture)
+│       ├── raw/            ← verbatim MCP payloads landed by the agent (not committed)
+│       └── landed/         ← output of --build (not committed)
 ├── references/
-│   ├── schema.md / api_guide.md / validation.md
+│   ├── schema.md / api_guide.md / mcp-data.md / validation.md
 └── agents/              ← Cursor / Hermes / OpenClaw adapters
 ```
 
@@ -57,18 +71,27 @@ skill-opinion-to-ruler/
 python3 scripts/build.py                                 # extraction demo
 python3 scripts/annotate.py tests/fixtures/labels.json   # per-field precision / recall
 python3 scripts/evaluate.py --fixture                    # offline end-to-end run
-python3 scripts/evaluate.py --panda --start 20240101 --end 20241231
-python3 -m pytest tests/ -v
+python3 scripts/mcp_landing.py --build                   # landed payloads -> this skill's own CSV
+python3 scripts/evaluate.py --landed-dir tests/fixtures/landed --start 20240101 --end 20241231
+python3 scripts/compare_baseline.py                      # read-only: re-run vs baselines/ anchor
+python3 -m pytest tests/ -v                              # 225 cases (113 + 39 + 18 + 52 + 3, see the tests/ tree below)
 ```
 
-With real data:
+Real bars never go through the script: MCP tools can only be called by an **agent**. The
+agent calls `mcp__pandadata__call_pandadata(method=get_future_daily / get_future_dominant,
+params=...)`, writes each returned payload **verbatim** to
+`tests/fixtures/raw/<method>__<label>.json`, and only then
+`python3 scripts/mcp_landing.py --build` converts them into
+`tests/fixtures/landed/bars_<SYMBOL>.csv`. `evaluate.py --landed-dir` reads those files
+(see `references/mcp-data.md`). No credentials, no network egress.
 
-```bash
-export PANDA_DATA_USERNAME=<your_username>
-export PANDA_DATA_PASSWORD=<your_password>
-```
-
-The acceptance report is written to `output/frozen_baseline.json` (git-ignored).
+The acceptance anchor ships with the skill: `baselines/frozen_baseline.json` is the frozen
+reference and `baselines/scope_declaration.json` its scope copy — both committed, so a git
+install can actually verify them. `evaluate.py` writes the **regenerated products** to
+`output/` (still git-ignored: a landing spot, never a second authority). Check the anchor
+with `python3 scripts/compare_baseline.py`, or inside a run with
+`python3 scripts/evaluate.py --fixture --check-baseline baselines/frozen_baseline.json`;
+a mismatch names the field that moved (frozen value -> new value) and exits non-zero.
 
 ---
 
@@ -96,38 +119,83 @@ otherwise                                      → inconclusive
 
 ## Current status
 
-Measured on two datasets. The divergence between them is exactly what this skill is meant to expose: **the same opinions flip sign when you move from synthetic to real bars.**
-
 ### A. Bundled fixture (offline, synthetic bars)
 
+Every number below is the **actual output** of `python3 scripts/evaluate.py --fixture`;
+`tests/test_docs.py` asserts the table against a live run, so the docs cannot drift away
+from the code unnoticed. The same numbers are frozen in the shipped
+`baselines/frozen_baseline.json` and re-checked field by field against a fresh run by
+`tests/test_baseline_guard.py`.
+
 | Item | Result |
 |---|---|
-| Per-field exact match | 1.00 on all 7 fields |
+| Labelled samples / per-field exact match | 26 samples (27 judgements) / 1.00 |
 | Rules produced | 15 (full 6 / partial 7 / neutral 2 / none 1) |
-| Ruleable share | 0.94 |
-| Trades simulated | 10 |
-| Paired edge vs hold | −0.0032, CI [−0.0096, 0.0] |
+| Ruleable share | 0.9375 |
+| Trades simulated | 10 (5 skipped) |
+| Mean net return / win rate | +0.0195 / 0.80 |
+| Sharpe (per trade / annualised) | 0.759 / 5.411 |
+| Paired edge vs hold | **−0.018527, CI [−0.028301, −0.008560], n=10** |
 | Verdict | `inconclusive` |
 
-### B. panda_data real bars (RB / I)
+Read that precisely: **both ends of the CI are negative**, so on these synthetic bars the
+rules consistently lose to holding. The verdict is `inconclusive` because n=10 is below the
+frozen 12-trade threshold — **not** because the CI straddles zero. Synthetic bars exist to
+exercise the pipeline; they are not market evidence.
+
+### B. Real bars (fetched via PandaData MCP, landed inside this skill)
+
+Numbers from real bars landed from licensed MCP payloads (the payloads themselves are not
+shipped), frozen in `baselines/rb-i-2024H1-real.json`. The chain is unchanged: **the agent
+fetches, the payload is written verbatim, the scripts read local files only** — the scripts never
+go online.
 
 | Item | Result |
 |---|---|
-| Bars requested | 2024-01-02 – 2024-12-31, 242 daily bars |
-| **Actual trade span** | **2024-01-09 – 2024-03-12** (opinions only cover early Jan to early Feb; each trade ends at its own horizon) |
-| Per-field exact match | 1.00 on all 7 fields |
-| Trades simulated | 12 (meets the 12-trade threshold) |
-| Mean net return | −0.0082, win rate 0.50 |
-| Paired edge vs hold | +0.0122, CI [−0.0045, 0.0285] |
+| Window / products | 2024-01-02 – 2024-06-28 / RB, I |
+| Volume | 117 stitched daily bars per product; 234 dominant-map rows + 320 contract-day rows |
+| Dominant rolls | 1 per product (`roll_count`); the basis gap at the roll is **preserved** |
+| Trades simulated | 12 (3 skipped) |
+| Mean net / win rate / max drawdown | −0.008188 / 0.50 / −0.1453 |
+| Sharpe (per trade / annualised) | −0.235 / −1.612 |
+| Paired edge vs hold | **+0.012154, CI [−0.004511, +0.028479], n=12** |
 | Verdict | `inconclusive` |
 
-> **On "long-horizon testing":** bars span a full year, but **trades only fall within about two months**, because the 16 opinions are dated Jan–Feb 2024. That is not a multi-regime long-horizon test; a claim of that kind needs a sample spanning much longer. This section previously said "full-year 2024", which read as if trades covered the year. Corrected.
+That table is not copied prose:
+`tests/test_baseline_guard.py::test_real_anchor_reproduces_from_the_raw_payloads` re-lands from the
+payloads, re-evaluates and compares this anchor field by field; it skips rather than passes when
+the licensed payloads are absent.
 
-**Reading these numbers.** The paired edge is positive on average, but the CI straddles zero and the 12 trades split evenly between wins and losses. Mean net return is negative while the edge is positive: these rules lose money, they just lose less than holding. The sample only just reaches the threshold; it is not evidence that the opinions work.
+The re-run corrected two things too. n=12 clears the frozen trade threshold but the **CI straddles
+zero**, so the verdict stays `inconclusive` — meeting a gate is not evidence of an effect. And the
+synthetic anchor yields **−0.0185** for the same rules, the **opposite sign** to real data, which is
+precisely why synthetic evidence is not allowed to cap the value score.
 
-> **Correction note:** versions up to 0.2.0 reported an edge of `+0.0162, CI [0.0021, 0.0328]`. That figure was defective — the baseline used each rule's own exit date, which made **every long rule's edge exactly zero**. The baseline now holds for the rule's pre-declared horizon instead. The table above is the corrected result, and a regression test guards the failure.
+To reproduce (steps 1–2 are performed by the agent; the scripts never go online):
 
-The two data modes disagree (edge negative in A, positive in B), which is precisely why synthetic bars cannot count as evidence. A citable conclusion needs real, timestamped, single-source opinions with a much larger sample.
+1. `mcp__pandadata__auth_status` — if not logged in: Settings → PandaData → Login.
+2. Call `get_future_dominant` / `get_future_daily` (RB, I, **20240102–20240628** — the window the
+   shipped anchor actually used; a different window is a different measurement and cannot be
+   compared against this table) following the slicing table in `references/mcp-data.md`, and
+   write each returned payload **verbatim** to `tests/fixtures/raw/<method>__<label>.json`.
+3. `python3 scripts/mcp_landing.py --build` — the truncation guard lives here: a payload with
+   `truncated: true` or `row_count < total_rows` is refused with a non-zero exit. Then
+   `--verify` to re-check what landed and what was built.
+4. `python3 scripts/evaluate.py --landed-dir <writable>/real_landed --start 20240102 --end 20240628`
+   — the directory must be named `real_landed`; that is the name recorded in the report.
+5. If the product location is not writable (an installed skill directory is read-only),
+   `evaluate.py` walks `requested path -> ./output -> <skill>/output -> system temp/output`,
+   **prints the path it actually wrote**, and does not crash after computing every number because
+   it cannot write into the package. A read-only install usually has a read-only working
+   directory too, so a single fallback location is not a fallback.
+
+`provenance.json` records which payload each file came from and the requested window; the report
+stores only **names** for `landed_dir` and `files`, never this machine's absolute paths — otherwise
+a shipped anchor would carry the fetching machine's directory layout.
+
+One caveat that survives the rewrite: even with a full year of bars, trades only land in the
+one or two months the opinion texts cover (Jan–Feb 2024 for these fixtures), so this is
+**not** a multi-regime test.
 
 ---
 

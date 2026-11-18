@@ -28,8 +28,14 @@ cd skill-opinion-to-ruler
 python3 scripts/build.py
 python3 scripts/annotate.py tests/fixtures/labels.json
 python3 scripts/evaluate.py --fixture
+python3 scripts/compare_baseline.py      # read-only check against baselines/frozen_baseline.json
 python3 -m pytest tests/ -v
 ```
+
+The frozen acceptance anchor ships in `baselines/` (committed), not in the git-ignored
+`output/` where regenerated products land. `compare_baseline.py` re-runs the deterministic
+fixtures and compares every field against it; a changed number is reported as
+`frozen=<old> -> generated=<new>` and exits non-zero.
 
 ```python
 import sys; sys.path.insert(0, "skill-opinion-to-ruler/scripts")
@@ -72,7 +78,21 @@ A negative result is a valid deliverable.
 
 - Python 3.8+
 - Standard library only
-- Optional: `panda-data==1.0.6` for the live data channel
+- No optional packages. Live bars come from the PandaData **MCP**, and MCP tools are callable
+  only by an agent — so the agent fetches and lands the payload, and the scripts then read
+  local files only: no network access, no credentials, no other skill, no old SDK. See
+  `references/mcp-data.md`.
+
+## Landing real bars
+
+Do this in order; the scripts cannot fetch for you:
+
+1. `mcp__pandadata__auth_status`, then `search_methods` → `get_method_doc` →
+   `mcp__pandadata__call_pandadata(method=get_future_daily / get_future_dominant, params=...)`
+2. Write each returned payload **verbatim** to `tests/fixtures/raw/<method>__<label>.json`
+3. `python3 scripts/mcp_landing.py --build` → `tests/fixtures/landed/bars_<SYMBOL>.csv`,
+   `dominant_<PRODUCT>.csv`, `provenance.json` (truncated parquet payloads are refused here)
+4. `python3 scripts/evaluate.py --landed-dir tests/fixtures/landed --start ... --end ...`
 
 ## Boundaries
 

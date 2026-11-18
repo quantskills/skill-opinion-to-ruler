@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: skill-opinion-to-ruler
   description: Extract testable trading rules from subjective market opinions. Maps free-form text into instrument, direction, entry trigger, horizon, stop loss and exit rule; validates extraction against a human-labelled sample; evaluates cost-adjusted results against a paired buy-and-hold baseline.
-  version: 0.3.0
+  version: 0.7.0
 
 x-skill-info:
   name: skill-opinion-to-ruler
@@ -20,15 +20,42 @@ x-steps:
     script: scripts/annotate.py
     description: Score extraction against a human-labelled JSON sample, per field.
     auth_required: false
+  - id: landing
+    script: scripts/mcp_landing.py
+    description: Convert agent-landed verbatim MCP payloads into this skill's own CSV files (--build / --verify / --inspect). Reads files only; never fetches.
+    auth_required: false
   - id: evaluate
     script: scripts/evaluate.py
-    description: End-to-end extraction, label scoring, paired-baseline backtest and verdict.
+    description: End-to-end extraction, label scoring, paired-baseline backtest and verdict. Pass --check-baseline baselines/frozen_baseline.json to verify the run against the shipped frozen anchor in the same command (read-only; non-zero exit on any changed field).
+    auth_required: false
+  - id: anchor_check
+    script: scripts/compare_baseline.py
+    description: Read-only acceptance guard. Re-runs the deterministic bundled fixtures and compares every field against the shipped anchor baselines/frozen_baseline.json plus baselines/scope_declaration.json; names each field that moved (frozen -> new) and exits 1. Reads files only; never fetches.
     auth_required: false
 
+x-acceptance-anchor:
+  reference: baselines/frozen_baseline.json
+  reference_scope: baselines/scope_declaration.json
+  shipped_in_package: true
+  regenerated_products: output/            # git-ignored landing spot, not an authority
+  guard: tests/test_baseline_guard.py
+  tolerance: 5e-07                          # half a unit of the report's 6-dp rounding
+  waived_fields: [generated_at]
+
 x-data-sources:
-  - id: panda_data
-    methods: [get_future_dominant, get_future_daily]
-    auth_env: [PANDA_DATA_USERNAME, PANDA_DATA_PASSWORD]
+  - id: pandadata_mcp_landing
+    methods: [get_future_daily, get_future_dominant]
+    transport: >-
+      MCP tools are callable only by an agent. The agent calls
+      mcp__pandadata__call_pandadata, writes the returned payload verbatim under
+      tests/fixtures/raw/, and scripts/mcp_landing.py --build converts it. Scripts hold no
+      network access and no credentials.
+    landed_payload: tests/fixtures/raw/<method>__<label>.json
+    built_path: tests/fixtures/landed/bars_<SYMBOL>.csv
+    dominant_path: tests/fixtures/landed/dominant_<PRODUCT>.csv
+    provenance: tests/fixtures/landed/provenance.json
+    truncation_guard: parquet preview capped at 2000 rows; truncated / row_count < total_rows is refused by --build unless --allow-partial
+    auth_env: []          # scripts hold no credentials; login lives in Settings -> PandaData
   - id: csv
     description: Local bars with date,open,high,low,close[,volume] header.
 
@@ -49,16 +76,21 @@ x-input-schema:
 x-output-fields:
   [schema_version, extractor_version, documents, summary, config, config_hash]
 
+# Every key the extractor emits on a rule object, no more and no fewer.
+# A consumer contract that under-declares is how percent_levels -- the channel
+# that says "the author meant 3%, not price 3" -- stays invisible downstream.
 x-rule-fields:
-  [rule_id, source_text, instrument, direction, entry_trigger, horizon,
-   stop_loss, exit_rule, position_size, missing_fields, ambiguity, assumed, testability]
+  [rule_id, schema_version, source_text, source_document_text, published_at, source,
+   instrument, instrument_inherited, direction, direction_word, direction_inferred,
+   entry_trigger, horizon, horizon_inherited, stop_loss, exit_rule, position_size,
+   invalidation, percent_levels, ambiguity, assumed, missing_fields, testability, reason]
 
 x-testability-enum: [full, partial, neutral, none]
 
 x-requirements:
   runtime: python >= 3.8
   packages: []
-  optional_packages: ["panda-data==1.0.6"]
+  optional_packages: []   # 0.4.0: SDK channel removed; data arrives as agent-landed MCP payloads
 
 x-boundaries:
   - Daily-close mechanics only; no intraday triggers or limit-locked fills.

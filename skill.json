@@ -1,19 +1,20 @@
 {
   "name": "skill-opinion-to-ruler",
-  "version": "0.3.0",
+  "version": "0.7.0",
   "entrypoint": "SKILL.md",
   "runtime": "python>=3.8",
   "license": "GPL-3.0-only",
   "type": "alpha",
-  "data_source": "PandaData (panda_data) or caller-provided bars/CSV",
+  "data_source": "PandaData (via MCP, landed in this skill's own fixtures) or caller-provided bars/CSV",
+  "data_source_note": "脚本不联网、不需要凭证：MCP 工具只能由 agent 调用，所以链路是 agent 调 mcp__pandadata__call_pandadata → 把返回载荷原样写入本技能的 tests/fixtures/raw/<method>__<label>.json → python3 scripts/mcp_landing.py --build 转成本技能既有格式 tests/fixtures/landed/bars_<SYMBOL>.csv 与 dominant_<PRODUCT>.csv（并写 provenance.json）。构建时强制校验截断判据（parquet 通道的 truncated / row_count<total_rows），不完整即结构化报错并非 0 退出；--allow-partial 放行时在产物里留下 partial 标记，评测报告据此告警。本技能不引用任何其他技能的脚本或路径。详见 references/mcp-data.md。",
   "entry_script": "scripts/build.py",
-  "source_task": null,
+  "source_task": "jobs/skill-opinion-to-ruler.txt",
   "dependencies": [],
-  "optional_dependencies": ["panda-data==1.0.6"],
+  "optional_dependencies": [],
   "evaluation": {
     "mode": "replay-only",
     "live_trading_access": false,
-    "description": "回放历史 bar 与带时间戳的观点文本，不连接实盘账户、交易网关或委托通道。",
+    "description": "回放历史 bar 与带时间戳的观点文本，不连接实盘账户、交易网关或委托通道；行情一律来自本地文件（本技能 fixtures 下由 MCP 载荷构建的 CSV，或调用方自备 CSV），代码内不存在任何在线取数出口。",
     "baseline": {
       "name": "hold",
       "description": "同标的、同起止日期的买入持有，配对比较；cash 为可选零收益基线。",
@@ -23,10 +24,17 @@
     "min_trades_for_verdict": 12,
     "verdict_rules": "positive: n>=12 and CI_low>0; negative: n>=12 and CI_high<=0; otherwise inconclusive",
     "group_by": "source",
-    "comparability_policy": "config_hash 覆盖 apply_defaults、policy 与 extractor 版本；哈希不同即判定为不可比。"
+    "comparability_policy": "config_hash 覆盖 apply_defaults、policy 与 extractor 版本；哈希不同即判定为不可比。数据模式与取数溯源记在报告的 data_mode / data 段（含 data.skipped_symbols：被声明但没拿到数据的标的）。"
   },
   "outputs": {
-    "acceptance_report": "output/frozen_baseline.json",
-    "gitignored": true
+    "acceptance_anchor": "baselines/frozen_baseline.json",
+    "acceptance_anchor_scope": "baselines/scope_declaration.json",
+    "acceptance_anchor_is_gitignored": false,
+    "regenerated_report": "output/frozen_baseline.json",
+    "regenerated_scope": "output/scope_declaration.json",
+    "regenerated_products_are_gitignored": true,
+    "anchor_check": "python3 scripts/compare_baseline.py",
+    "anchor_check_within_run": "python3 scripts/evaluate.py --fixture --check-baseline baselines/frozen_baseline.json",
+    "note": "验收锚点随包发布：baselines/ 是冻结参照（0.5.0 之前它住在 .gitignore 排除的 output/ 里，从 git 安装的人根本拿不到）。output/ 只是每次运行重新生成的落点，不是权威。守卫在 tests/test_baseline_guard.py：从确定性夹具重跑一遍，逐字段比对 baselines/frozen_baseline.json（浮点容差 5e-7，仅 generated_at 豁免），不一致即结构化报错并非 0 退出。"
   }
 }

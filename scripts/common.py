@@ -122,15 +122,30 @@ MAIN_PAT = re.compile(r"(主力|主连|连续|dominant|front[- ]month|continuous
 # ---------------------------------------------------------------------------
 # Direction lexicon (Chinese + English)
 # ---------------------------------------------------------------------------
-LONG_WORDS = ["看多", "做多", "买入", "买进", "多单", "看涨", "偏多", "加多", "逢低买",
+LONG_WORDS = ["看多", "做多", "买入", "买进", "多单", "多头", "看涨", "偏多", "加多", "逢低买",
               "逢低做多", "试多", "转多", "买多",
-              "bullish", "long", "buy", "go long", "upside", "goes up", "higher"]
-SHORT_WORDS = ["看空", "做空", "卖出", "卖空", "空单", "看跌", "偏空", "加空", "逢高卖",
+              "bullish", "long", "buy", "go long", "upside", "goes up", "higher",
+    "上车",   # 进场俚语：中文交易语境里几乎只表示"跟进去做多头"
+]
+SHORT_WORDS = ["看空", "做空", "卖出", "卖空", "空单", "空头", "看跌", "偏空", "加空", "逢高卖",
                "逢高做空", "试空", "转空",
                "bearish", "short", "sell", "go short", "downside", "goes down", "lower"]
 NEUTRAL_WORDS = ["观望", "中性", "不参与", "区间操作", "离场观望", "不追",
+                 "不建议参与", "不建议", "暂不参与", "先不做", "等右侧确认",
                  "neutral", "stand aside", "stay out", "no position", "wait and see", "range-bound"]
 NEGATIONS = ["不", "没有", "别", "并非", "不太", "未"]
+
+# A negation does not have to sit flush against the direction word. ``不再看多``,
+# ``不是看涨`` and ``不建议做多`` are all negated, yet ``prefix.endswith(neg)``
+# misses them because an adverb (再/是/建议) intervenes — which silently kept
+# ``螺纹钢不再看多`` as a *long* rule and sent it to the backtester on the wrong
+# side. Match the tail of the prefix and allow up to three non-punctuation
+# characters between the negator and the direction word. The window stops at
+# punctuation, so ``不追。螺纹钢看多`` cannot leak a negation across a boundary.
+CN_NEGATION_TAIL = re.compile(
+    r"(?:没有|并非|不太|不再|不是|不建议|不宜|不应|不该|不要|不|别|未|勿|无)"
+    r"[^\s，,。.;；]{0,3}$"
+)
 
 # English negation is matched as a word just before the direction word.
 EN_NEGATION_PAT = re.compile(
@@ -176,6 +191,22 @@ PULLBACK_KW = (r"(?:回踩|回抽|回调|回落|回撤"
 NUM = r"(\d+(?:\.\d+)?)"
 RANGE_SEP = r"(?:-|~|到|至|—)"
 
+# ``看3850上方`` is a breakout trigger, not a 3850 target: the zone suffix makes
+# the level a condition. Reading it as a target produced rules where entry and
+# exit were the same number (``close > 3850`` and ``close >= 3850``), which the
+# matcher then exits on the very bar it fills. Target patterns must reject a
+# level that is followed by a zone suffix.
+ZONE_SUFFIX = r"(?:上方|下方|以上|以下|之上|之下|附近|左右)"
+ZONE_GUARD = r"(?!\s*%s|%s\s)" % (ZONE_SUFFIX, ZONE_SUFFIX)
+
+# ``止损3%`` and ``止损 3.5 %`` state a *relative* level. They are not price
+# levels, and a daily-close expression like ``close < 3`` would silently disable
+# the stop on a 3850 instrument: the trade then rides to target and the loss the
+# author planned to cap is reported as a win. Percentages are masked out of the
+# level scan and reported as a separate, non-executable finding instead.
+PERCENT_LEVEL = re.compile(r"(\d+(?:[.,]\d+)?)\s*[%％]")
+PERCENT_GAP = re.compile(r"[%％]\s*(?:点|个百分点)?")
+
 # Tokens that mark a sentence as referring to a price level rather than a date.
 LEVEL_HINT = re.compile(
     r"(?:元|点|附近|上方|下方|以上|以下|之上|之下|\bpts?\b|\bpoints?\b|\babove\b|\bbelow\b|\barea\b)",
@@ -206,7 +237,21 @@ def _is_negated(text: str, start: int, word: str) -> bool:
     prefix = text[max(0, start - 24):start]
     if _is_ascii(word):
         return bool(EN_NEGATION_PAT.search(prefix))
-    return any(prefix.endswith(neg) for neg in NEGATIONS)
+    return bool(CN_NEGATION_TAIL.search(prefix))
+
+
+def direction_candidates(text: str):
+    """Every explicit direction word as ``(start, label, word, negated)``."""
+    found = []
+    for words, label in ((LONG_WORDS, "long"), (SHORT_WORDS, "short")):
+        for word in words:
+            starts = list(_match_starts(text, word))
+            if not starts:
+                continue
+            first = min(starts)
+            found.append((first, label, word, _is_negated(text, first, word)))
+    found.sort(key=lambda c: c[0])
+    return found
 
 
 def _has_word(text: str, word: str) -> bool:
@@ -214,21 +259,213 @@ def _has_word(text: str, word: str) -> bool:
     return next(_match_starts(text, word), None) is not None
 
 
-def find_instrument(text):
-    """Return ``{raw, symbol, exchange, contract, mapping_rule}`` or None."""
+def _product_index():
+    """symbol -> exchange, first alias wins."""
+    idx = {}
+    for _name, _symbol, _exchange in INSTRUMENTS:
+        idx.setdefault(_symbol, _exchange)
+    return idx
+
+
+PRODUCT_EXCHANGE = _product_index()
+
+# The extractor has always *emitted* exchange codes (``symbol: "RB"``), but it
+# could not *read* them: ``find_instrument`` only scanned the alias column, so
+# ``RB看多，站上3850`` was dropped as "no instrument" while ``螺纹钢看多`` parsed
+# fine. Codes are scanned case-sensitively with ASCII guards so ``If`` and
+# ``longer`` cannot fire, and single-letter codes (I/M/P/Y/C/L/J) additionally
+# require an adjacent CJK character — otherwise ``I think gold...`` would map to
+# iron ore. ``IF`` is held to the same rule because it is an English word.
+CJK_PAT = re.compile(r"[㐀-䶿一-鿿]")
+SINGLE_LETTER_CODES = sorted([c for c in PRODUCT_EXCHANGE if len(c) == 1])
+MULTI_LETTER_CODES = sorted([c for c in PRODUCT_EXCHANGE if len(c) >= 2],
+                            key=len, reverse=True)
+CODE_REQUIRING_CJK = {"IF"}
+CONTRACT_CODE_PAT = re.compile(r"(?<![A-Za-z0-9])([A-Z]{1,2})(\d{3,4})(?![A-Za-z0-9])")
+CLAUSE_PAT = re.compile(r"[，,、；;]")
+
+
+def _alias_hits(text):
+    """Occurrences of alias names as ``(start, end, payload)``, position sorted."""
+    hits = []
     for name, symbol, exchange in INSTRUMENTS:
-        starts = list(_match_starts(text, name))
-        if not starts:
+        for start in _match_starts(text, name):
+            end = start + len(name)
+            # Skip an occurrence that sits inside a longer alias for ANOTHER
+            # product; same-symbol longer aliases are harmless (dedup keeps the
+            # earliest occurrence anyway).
+            shadowed = False
+            for other, other_symbol, _ in INSTRUMENTS:
+                if other_symbol == symbol or other == name or name not in other:
+                    continue
+                pos = text.find(other)
+                if pos != -1 and pos <= start and end <= pos + len(other):
+                    shadowed = True
+                    break
+            if shadowed:
+                continue
+            hits.append((start, end, _instrument_payload(name, symbol, exchange, text, end)))
+    hits.sort(key=lambda h: (h[0], -(h[1] - h[0])))
+    return hits
+
+
+def _code_hits(text):
+    """Occurrences of exchange codes / contract codes as ``(start, end, payload)``."""
+    hits = []
+    for m in CONTRACT_CODE_PAT.finditer(text):
+        code = m.group(1)
+        if code not in PRODUCT_EXCHANGE:
             continue
-        start = starts[0]
-        end = start + len(name)
-        if _is_ascii(name):
-            return _instrument_payload(name, symbol, exchange, text, end)
-        # Guard against substring false positives inside a longer product name.
-        longer = [n for n, _, _ in INSTRUMENTS if n != name and name in n]
-        if any(n in text and n != name and start >= text.find(n) and end <= text.find(n) + len(n) for n in longer):
+        payload = {
+            "raw": m.group(0),
+            "symbol": code,
+            "exchange": PRODUCT_EXCHANGE[code],
+            "contract": "specific",
+            "contract_code": m.group(0),
+            "mapping_rule": "contract_to_product",
+        }
+        hits.append((m.start(), m.end(), payload))
+    if MULTI_LETTER_CODES:
+        pat = re.compile(r"(?<![A-Za-z0-9])(" + "|".join(MULTI_LETTER_CODES) +
+                         r")(?![A-Za-z0-9])")
+        for m in pat.finditer(text):
+            code = m.group(1)
+            if code in CODE_REQUIRING_CJK and not _has_cjk_neighbour(text, m.start(), m.end()):
+                continue
+            payload = _instrument_payload(code, code, PRODUCT_EXCHANGE[code], text, m.end())
+            payload["mapping_rule"] = "code_to_continuous_main" \
+                if payload["contract"] == "main" else "code_to_symbol"
+            hits.append((m.start(), m.end(), payload))
+    for code in SINGLE_LETTER_CODES:
+        for m in re.finditer(r"(?<![A-Za-z0-9])" + code + r"(?![A-Za-z0-9])", text):
+            if not _has_cjk_neighbour(text, m.start(), m.end()):
+                continue
+            payload = _instrument_payload(code, code, PRODUCT_EXCHANGE[code], text, m.end())
+            payload["mapping_rule"] = "code_to_continuous_main" \
+                if payload["contract"] == "main" else "code_to_symbol"
+            hits.append((m.start(), m.end(), payload))
+    hits.sort(key=lambda h: (h[0], -(h[1] - h[0])))
+    return hits
+
+
+def _has_cjk_neighbour(text, start, end):
+    return bool(CJK_PAT.search(text[max(0, start - 1):start] or "") or
+                 CJK_PAT.search(text[end:end + 1] or ""))
+
+
+def instrument_hits(text):
+    """Every instrument mention, aliases and codes together, in text order."""
+    return sorted(_alias_hits(text) + _code_hits(text), key=lambda h: (h[0], -(h[1] - h[0])))
+
+
+def find_instruments(text):
+    """Instruments mentioned in ``text``, position ordered, one entry per symbol."""
+    out = []
+    seen = set()
+    for _start, _end, payload in instrument_hits(text):
+        sym = payload["symbol"]
+        if sym in seen:
             continue
-        return _instrument_payload(name, symbol, exchange, text, end)
+        seen.add(sym)
+        out.append(payload)
+    return out
+
+
+def instrument_spans(text):
+    """Split ``text`` into per-instrument spans.
+
+    Chinese opinion text strings several products together inside one sentence,
+    separated by commas: ``螺纹钢多头铁矿空头，RB看3850上方，I看840下方。`` A
+    sentence-level level scan gives both products the same price pool, so the
+    rebar rule picked up iron ore's 840 as its stop. This maps every clause to
+    the instrument it speaks about: a clause that names two instruments is cut
+    at each mention, and a clause that names none inherits the most recent one.
+
+    Returns ``[(payload, span_text), ...]`` in first-mention order, or ``[]``
+    when nothing is mapped (the caller then falls back to context inheritance).
+    """
+    hits = instrument_hits(text)
+    if not hits:
+        return []
+
+    ranges = []
+    pos = 0
+    for m in CLAUSE_PAT.finditer(text):
+        if m.start() > pos:
+            ranges.append((pos, m.start()))
+        pos = m.end()
+    if pos < len(text):
+        ranges.append((pos, len(text)))
+
+    groups, order, active = {}, [], None
+    for c_start, c_end in ranges:
+        clause_hits = [h for h in hits if h[0] >= c_start and h[1] <= c_end]
+        if not clause_hits:
+            if active is not None:
+                groups[active].append((c_start, c_end))
+            continue
+        cut = c_start
+        for i, (_h_start, _h_end, payload) in enumerate(clause_hits):
+            nxt = clause_hits[i + 1][0] if i + 1 < len(clause_hits) else c_end
+            sym = payload["symbol"]
+            if sym not in groups:
+                groups[sym] = []
+                order.append(sym)
+                groups[sym].append((max(c_start, _h_start - 0), nxt))
+            else:
+                groups[sym].append((cut, nxt) if _h_start >= cut else (_h_start, nxt))
+            cut = nxt
+            active = sym
+        if cut < c_end:
+            groups[active].append((cut, c_end))
+
+    spans = []
+    for sym in order:
+        pieces = [text[s:e] for s, e in sorted(groups[sym])]
+        spans.append((next(p for _s, _e, p in hits if p["symbol"] == sym),
+                      "，".join(p.strip("，,、 ") for p in pieces if p.strip("，,、 "))))
+    return spans
+
+
+def find_percent_levels(text):
+    """Relative (percentage) levels, which are not executable price levels."""
+    out = []
+    for m in PERCENT_LEVEL.finditer(text):
+        before = text[max(0, m.start() - 14):m.start()]
+        after = text[m.end():m.end() + 6]
+        tail = r"[^，,。.;；\d]{0,8}$"
+        if re.search(STOP_KW + tail, before):
+            field = "stop_loss"
+        elif re.search(r"(涨幅|上涨|上行|跌幅|下跌|下行)" + tail, after):
+            field = "exit_rule"
+        elif re.search(TARGET_UP_KW + tail, before) or re.search(TARGET_DOWN_KW + tail, before):
+            field = "exit_rule"
+        elif re.search(PULLBACK_KW + tail, before):
+            field = "entry_trigger"
+        elif re.search(UP_KW + tail, before) or re.search(DOWN_KW + tail, before):
+            field = "entry_trigger"
+        else:
+            field = "price_level"
+        out.append({"field": field,
+                    "value": float(m.group(1).replace(",", ".")),
+                    "phrase": m.group(0).strip()})
+    return out
+
+
+def mask_percent_levels(text):
+    """Blank out ``3%``-style tokens so the level scan cannot read ``3`` as a price."""
+    return PERCENT_LEVEL.sub(" ", text)
+
+
+def find_instrument(text):
+    """Return ``{raw, symbol, exchange, contract, mapping_rule}`` or None.
+
+    The earliest mention in the text wins — alias names and exchange codes are
+    merged into one position-ordered list, so ``螺纹钢...铁矿石`` maps to RB.
+    """
+    hits = instrument_hits(text)
+    if hits:
+        return hits[0][2]
 
     m = re.search(r"\b([A-Z]{1,2})(\d{3,4})\b", text)
     if m:
@@ -261,20 +498,19 @@ def _instrument_payload(raw, symbol, exchange, text, end):
 def find_direction(text):
     """Return ``(direction, matched_word, negated)``.
 
-    Explicit long/short words win. Negation directly before the word flips it.
-    English words match on word boundaries, so ``long`` does not fire inside
-    ``longer`` and ``short`` does not fire inside ``shortage``.
+    Position decides, not dictionary order: the earliest *unnegated* explicit
+    word wins, so ``螺纹钢多头铁矿空头`` reads as long (what the author said
+    about rebar) instead of whichever list happened to be scanned first.
+    When every explicit word is negated the caller must not flip the sign —
+    see ``_resolve_direction`` in build.py.
     """
-    for words, label in ((SHORT_WORDS, "short"), (LONG_WORDS, "long")):
-        best = None
-        for word in words:
-            for start in _match_starts(text, word):
-                if best is None or start < best[0]:
-                    best = (start, word)
-                break
-        if best is not None:
-            start, word = best
-            return label, word, _is_negated(text, start, word)
+    cands = direction_candidates(text)
+    for _start, label, word, negated in cands:
+        if not negated:
+            return label, word, False
+    if cands:
+        _start, label, word, _neg = cands[0]
+        return label, word, True
     for word in NEUTRAL_WORDS:
         if next(_match_starts(text, word), None) is not None:
             return "neutral", word, False
@@ -312,15 +548,17 @@ def parse_levels(text):
     }
 
     up = _first([
-        TARGET_UP_KW + CONNECTOR + NUM,
+        TARGET_UP_KW + CONNECTOR + NUM + ZONE_GUARD,
         NUM + r"\s*(?:目标位|目标价)",
-        r"目标\s*" + NUM,
-        r"上看\s*" + NUM,
+        r"目标\s*" + NUM + ZONE_GUARD,
+        r"上看\s*" + NUM + ZONE_GUARD,
         # Bare "看 4100" / "看至4100": a target verb directly followed by a number.
-        r"看(?:到|至|高至)?\s*" + NUM,
+        # ``看3850上方`` is excluded by the zone guard — it is a trigger, not a
+        # target, and treating it as a target made entry and exit the same price.
+        r"看(?:到|至|高至)?\s*" + NUM + ZONE_GUARD,
     ], text)
     down = _first([
-        TARGET_DOWN_KW + CONNECTOR + NUM,
+        TARGET_DOWN_KW + CONNECTOR + NUM + ZONE_GUARD,
         r"目标\s*" + NUM + r"\s*(?:下方|以下)",
     ], text)
     out["target_up"] = up

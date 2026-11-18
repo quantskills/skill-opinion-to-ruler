@@ -18,10 +18,268 @@ jobs:
       - name: Install test dependencies
         run: pip install pytest
       - name: Run tests
-        run: python -m pytest tests/ -q
+        run: python -m pytest tests/ -q -p no:cacheprovider
       - name: Extraction self-check
         run: python scripts/build.py
       - name: Label scoring
         run: python scripts/annotate.py tests/fixtures/labels.json
       - name: Offline acceptance run
         run: python scripts/evaluate.py --fixture
+      # ------------------------------------------------------------------
+      # The acceptance anchor is a deliverable, not a build artifact. CI runs on a
+      # real git checkout, so this is where "can someone who installed from git
+      # verify the frozen baseline?" is actually answered: 0.5.0 and earlier kept
+      # the anchor under git-ignored output/, so the answer was no.
+      #
+      # `git check-ignore` exit codes are NOT used as the tracked/untracked verdict
+      # here: it exits 0 for a path whose matching pattern is a negation, which
+      # would call the shipped anchor "ignored". The index is the ground truth.
+      # ------------------------------------------------------------------
+      - name: Frozen anchor is present in a clean checkout
+        run: |
+          set -euo pipefail
+          tracked=$(git ls-files -- baselines)
+          echo "committed anchor files:"; echo "$tracked"
+          for need in baselines/frozen_baseline.json baselines/scope_declaration.json; do
+            printf '%s\n' "$tracked" | grep -qxF -- "$need" || {
+              echo "$need is not committed: a git install would ship no acceptance anchor"
+              exit 1; }
+          done
+          if [ -n "$(git status --porcelain --ignored -- baselines)" ]; then
+            echo "git reports something under baselines/ as ignored:"
+            git status --porcelain --ignored -- baselines
+            exit 1
+          fi
+          # regenerated products must still be excluded, or two copies claim authority
+          git check-ignore -v -- output/frozen_baseline.json | grep -q 'output/' || {
+            echo "output/ no longer hides regenerated products"; exit 1; }
+      - name: Regenerated run reproduces the frozen anchor field by field
+        run: |
+          set -euo pipefail
+          python scripts/compare_baseline.py
+          python scripts/evaluate.py --fixture --check-baseline baselines/frozen_baseline.json
+      - name: The anchor guard fails when a baseline number moves
+        run: |
+          set -euo pipefail
+          WORK=$(mktemp -d)
+          BEFORE=$(sha256sum baselines/frozen_baseline.json baselines/scope_declaration.json)
+          cp baselines/frozen_baseline.json "$WORK/doctored.json"
+          python - "$WORK/doctored.json" <<'PY'
+          import json, sys
+          path = sys.argv[1]
+          report = json.load(open(path, encoding="utf-8"))
+          # move one digit of the paired edge: the guard has to notice it
+          report["backtest"]["edge"]["mean"] = round(report["backtest"]["edge"]["mean"] + 1e-6, 6)
+          json.dump(report, open(path, "w", encoding="utf-8"), ensure_ascii=False, indent=2)
+          PY
+          set +e
+          out=$(python scripts/compare_baseline.py --report "$WORK/doctored.json" --scope '' 2>&1)
+          rc=$?
+          set -e
+          if [ "$rc" -eq 0 ]; then
+            echo "a doctored baseline passed the anchor guard - that is a hollow guard"
+            echo "$out"; exit 1
+          fi
+          printf '%s' "$out" | grep -q 'backtest.edge.mean' || {
+            echo "the guard failed but never named the field:"; echo "$out"; exit 1; }
+          # and the shipped reference must have survived the check untouched
+          AFTER=$(sha256sum baselines/frozen_baseline.json baselines/scope_declaration.json)
+          if [ "$BEFORE" != "$AFTER" ]; then
+            echo "the read-only check modified baselines/"; exit 1
+          fi
+          rm -rf "$WORK"
+      - name: CLI smoke (import-time errors are not caught by collection)
+        run: |
+          python scripts/data_loader.py --help
+          python scripts/evaluate.py --help
+          python scripts/compare_baseline.py --help
+          python scripts/mcp_landing.py --help
+      # The data path must be file-only: no SDK import, no login call, no credential
+      # env vars, no SDK pin anywhere in code / deps / metadata. CHANGELOG history is
+      # deliberately excluded — past entries keep naming the channel they describe.
+      - name: No online data egress in code, deps or metadata
+        run: |
+          set -euo pipefail
+          hits=$(grep -rnE "import panda_data|init_token\(|PANDA_DATA_(USERNAME|PASSWORD|BASE_URL)|panda-data==" \
+                   --include=*.py --include=*.txt --include=*.json --include=*.toml . || true)
+          if [ -n "$hits" ]; then echo "SDK traces found:"; echo "$hits"; exit 1; fi
+      - name: Scripts must not import networking or SDK modules
+        run: |
+          set -euo pipefail
+          hits=$(grep -rnE "^[[:space:]]*(import|from)[[:space:]]+(socket|http|urllib|requests|aiohttp)[[:space:]]" \
+                   scripts/ || true)
+          if [ -n "$hits" ]; then echo "network imports found:"; echo "$hits"; exit 1; fi
+
+      # ------------------------------------------------------------------
+      # The landing contract: an agent lands verbatim MCP payloads, and
+      # scripts/mcp_landing.py --build is the only thing that converts them.
+      # The truncation guard must be a guard (exit non-zero, write nothing),
+      # the escape hatch must leave evidence, and the removed interface must
+      # stay removed.
+      #
+      # Banned token *values* are assembled at run time so that this workflow
+      # file is never itself a match for its own grep guards.
+      # ------------------------------------------------------------------
+      - name: Landing guard refuses a truncated payload and writes nothing
+        run: |
+          set -euo pipefail
+          WORK=$(mktemp -d)
+          RAW="$WORK/raw"; OUT="$WORK/landed"
+          mkdir -p "$RAW"
+          printf '%s' '{"rows":[{"symbol":"RB2405","date":"20240102","open":3600.0,"high":3610.0,"low":3590.0,"close":3605.0,"volume":1000.0}],"params":{"symbol":"RB2405","start_date":"20240102","end_date":"20240102"},"row_count":1,"total_rows":5000,"truncated":true}' > "$RAW/get_future_daily__RB2405.json"
+          printf '%s' '{"data":[{"date":"20240102","symbol":"RB2405","trading_code":"RB2405","underlying_symbol":"RB"}],"params":{"underlying_symbol":"RB","start_date":"20240102","end_date":"20240102"}}' > "$RAW/get_future_dominant__RB.json"
+          set +e
+          out=$(python scripts/mcp_landing.py --build --raw-dir "$RAW" --out-dir "$OUT" 2>&1); rc=$?
+          set -e
+          if [ "$rc" -eq 0 ]; then echo "truncated payload must not build (rc=0)"; echo "$out"; exit 1; fi
+          if ! printf '%s' "$out" | grep -q 'payload_truncated'; then
+            echo "expected payload_truncated, got:"; echo "$out"; exit 1
+          fi
+          # validate-before-write: the refusal must not leave a half-built directory
+          if [ -d "$OUT" ] && [ -n "$(ls -A "$OUT")" ]; then
+            echo "refusal left files behind: $(ls -A "$OUT")"; exit 1
+          fi
+          rm -rf "$WORK"
+
+      - name: allow-partial admits it but marks the provenance
+        run: |
+          set -euo pipefail
+          WORK=$(mktemp -d)
+          RAW="$WORK/raw"; OUT="$WORK/landed"
+          mkdir -p "$RAW"
+          printf '%s' '{"rows":[{"symbol":"RB2405","date":"20240102","open":3600.0,"high":3610.0,"low":3590.0,"close":3605.0,"volume":1000.0}],"params":{"symbol":"RB2405","start_date":"20240102","end_date":"20240102"},"row_count":1,"total_rows":5000,"truncated":true}' > "$RAW/get_future_daily__RB2405.json"
+          printf '%s' '{"rows":[{"symbol":"RB2410","date":"20240103","open":3700.0,"high":3710.0,"low":3690.0,"close":3705.0,"volume":1000.0}],"params":{"symbol":"RB2410","start_date":"20240103","end_date":"20240103"},"row_count":40,"total_rows":9000}' > "$RAW/get_future_daily__RB2410.json"
+          python scripts/mcp_landing.py --build --raw-dir "$RAW" --out-dir "$OUT" --allow-partial --json > "$WORK/build.json"
+          python - "$OUT" "$WORK/build.json" <<'PY'
+          import json, sys
+          prov = json.load(open(sys.argv[1] + "/provenance.json", encoding="utf-8"))
+          summary = json.load(open(sys.argv[2], encoding="utf-8"))
+          assert prov["allow_partial"] is True, prov
+          assert prov["partial"] is True, prov
+          # both truncation criteria are covered: truncated=True and row_count < total_rows
+          assert prov["partial_payloads"] == [
+              "get_future_daily__RB2405.json", "get_future_daily__RB2410.json",
+          ], prov["partial_payloads"]
+          assert prov["files"]["bars_RB2405.csv"]["partial"] is True, prov
+          assert summary["partial"] is True, summary
+          # and the built file is this skill's own schema, readable as-is
+          import csv
+          rows = list(csv.DictReader(open(sys.argv[1] + "/bars_RB2405.csv", encoding="utf-8")))
+          assert list(rows[0].keys()) == ["date", "open", "high", "low", "close", "volume"], rows[0]
+          PY
+          rm -rf "$WORK"
+
+      - name: Missing landing directory names the agent-side MCP call
+        run: |
+          set -euo pipefail
+          WORK=$(mktemp -d)
+          ABSENT="$WORK""/no_such_landing_dir"
+          set +e
+          out=$(python scripts/mcp_landing.py --build --raw-dir "$ABSENT" --out-dir "$WORK/landed" 2>&1); rc=$?
+          set -e
+          if [ "$rc" -eq 0 ]; then echo "absent landing dir must fail"; exit 1; fi
+          printf '%s' "$out" | grep -q 'landing_not_found' || { echo "$out"; exit 1; }
+          # the hint must teach the fix: an agent-side MCP call, not a network flag
+          printf '%s' "$out" | grep -q 'mcp__pandadata__call_pandadata' || {
+            echo "hint does not name the MCP call:"; echo "$out"; exit 1; }
+          if [ -d "$WORK/landed" ] && [ -n "$(ls -A "$WORK/landed")" ]; then
+            echo "failed build wrote into --out-dir"; exit 1
+          fi
+          # an existing but empty landing dir is the same failure, not a silent no-op
+          mkdir -p "$WORK/empty_raw"
+          set +e
+          out=$(python scripts/mcp_landing.py --build --raw-dir "$WORK/empty_raw" --out-dir "$WORK/landed2" 2>&1); rc=$?
+          set -e
+          if [ "$rc" -eq 0 ]; then echo "empty landing dir must fail"; exit 1; fi
+          printf '%s' "$out" | grep -q 'landing_not_found' || { echo "$out"; exit 1; }
+          rm -rf "$WORK"
+
+      # Truncation is decided while building, from the payload itself. By evaluation
+      # time the data is already local CSV, so the old evaluation-stage switches must
+      # be gone: passing one is a usage error (exit 2), never a silently ignored flag.
+      - name: The removed evaluation switches stay removed
+        run: |
+          set -euo pipefail
+          # assembled so this file never contains the flag it tests
+          OLDPORT="--"; OLDPORT="${OLDPORT}cache"; OLDPORT="${OLDPORT}-dir"
+          WORK=$(mktemp -d)
+          rc_of() { set +e; python "$@" >/dev/null 2>&1; local rc=$?; set -e; echo "$rc"; }
+          for pair in \
+            "evaluate + old data directory flag|$(rc_of scripts/evaluate.py --fixture "$OLDPORT" "$WORK/x")" \
+            "evaluate + --allow-partial|$(rc_of scripts/evaluate.py --fixture --allow-partial)" \
+            "evaluate with no data source at all|$(rc_of scripts/evaluate.py)" \
+            "landing build + old data directory flag|$(rc_of scripts/mcp_landing.py --build "$OLDPORT" "$WORK/x")"; do
+            label="${pair%%|*}"; rc="${pair##*|}"
+            if [ "$rc" != "2" ]; then
+              echo "expected usage error (exit 2) for: $label (got $rc)"; exit 1
+            fi
+          done
+          # and the flag that does exist on the builder must not be an evaluate flag
+          if python scripts/evaluate.py --help 2>&1 | grep -q -- '--allow-partial'; then
+            echo "evaluate.py must not advertise --allow-partial"; exit 1
+          fi
+          if python scripts/evaluate.py --help 2>&1 | grep -q -- "$OLDPORT"; then
+            echo "evaluate.py must not advertise the removed data directory flag"; exit 1
+          fi
+          rm -rf "$WORK"
+
+      # The skill must be installable on its own: no other skill's name, script,
+      # directory convention or manifest anywhere - the changelog alone may keep
+      # naming what was removed. Tokens are assembled at run time so this workflow
+      # file is not itself a hit.
+      #
+      # tests/ is exempt from the token scan on purpose: a test may name a removed
+      # flag in order to prove the CLI still rejects it (see
+      # test_cli_rejects_a_removed_cache_interface). Everything that *describes*
+      # the design - docs, scripts, metadata - is held to the strict rule.
+      - name: Docs and code describe this skill only
+        run: |
+          set -euo pipefail
+          OTHER="skill-"; OTHER="${OTHER}quant-data-pipeline"
+          WRITER="fetch_"; WRITER="${WRITER}pandadata_mcp"
+          IMPOSED="data/raw/mcp"; IMPOSED="${IMPOSED}_cache"
+          MANIFEST="_manifest"; MANIFEST="${MANIFEST}.jsonl"
+          CONTRACT="pandadata-"; CONTRACT="${CONTRACT}mcp-"; CONTRACT="${CONTRACT}cache"
+          # CHANGELOG.md (history) and tests/ (negative assertions) are filtered out of
+          # the *results*, not via --exclude, which BSD grep ignores.
+          scan() {
+            grep -rIln -F -e "$1" --exclude-dir=.git \
+              --include=*.md --include=*.yaml --include=*.yml --include=*.mdc \
+              --include=*.py --include=*.txt --include=*.json . 2>/dev/null \
+              | grep -v 'CHANGELOG.md' | grep -v '^\./tests/' || true
+          }
+          fail=0
+          for token in "$OTHER" "$WRITER" "$IMPOSED" "$MANIFEST" "$CONTRACT"; do
+            hits=$(scan "$token")
+            if [ -n "$hits" ]; then
+              echo "removed cross-skill design token '$token' found in:"; echo "$hits"; fail=1
+            fi
+          done
+          # the renamed module and its removed flag must not survive in any prose
+          MOD="mcp_"; MOD="${MOD}cache"
+          CACHEDIR="cache_"; CACHEDIR="${CACHEDIR}dir"
+          OLDPORT="--"; OLDPORT="${OLDPORT}cache"; OLDPORT="${OLDPORT}-dir"
+          for token in "$MOD" "$CACHEDIR" "$OLDPORT"; do
+            hits=$(grep -rIln -F -e "$token" --exclude-dir=.git \
+                      --include=*.md --include=*.yaml --include=*.yml --include=*.mdc . 2>/dev/null \
+                    | grep -v 'CHANGELOG.md' || true)
+            if [ -n "$hits" ]; then
+              echo "renamed/removed name '$token' still used in prose:"; echo "$hits"; fail=1
+            fi
+          done
+          # the builder's real name and its two directories must be documented
+          for doc in README.md README.en.md SKILL.md INSTALL.md references/mcp-data.md; do
+            grep -qF -e 'mcp__pandadata__call_pandadata' "$doc" || { echo "$doc lost the MCP call step"; fail=1; }
+            grep -qF -e 'mcp_landing.py' "$doc" || { echo "$doc lost the build step"; fail=1; }
+            grep -qF -e 'tests/fixtures/raw' "$doc" || { echo "$doc lost the landing directory"; fail=1; }
+          done
+          # an install path is not provenance: docs may not hardcode one
+          HOME_PREFIX="/Users"; HOME_PREFIX="${HOME_PREFIX}/"
+          hits=$(grep -rIln -F -e "$HOME_PREFIX" --exclude-dir=.git \
+                    --include=*.md --include=*.yaml --include=*.mdc --include=*.yml . 2>/dev/null \
+                  | grep -v 'CHANGELOG.md' || true)
+          if [ -n "$hits" ]; then
+            echo "absolute install path found in docs:"; echo "$hits"; fail=1
+          fi
+          if [ "$fail" -ne 0 ]; then exit 1; fi
+          echo "self-containment guard passed"

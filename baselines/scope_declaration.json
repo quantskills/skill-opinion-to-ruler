@@ -1,0 +1,102 @@
+{
+  "scope_version": "scope-v1",
+  "declared_before_backtest": true,
+  "data_mode": "fixture",
+  "date_range": {
+    "start": "20240101",
+    "end": "20241231"
+  },
+  "declared_symbols": [
+    "I",
+    "RB"
+  ],
+  "supported_universe": [
+    "RB",
+    "I",
+    "HC",
+    "SS",
+    "J",
+    "JM",
+    "CU",
+    "AL",
+    "ZN",
+    "NI",
+    "PB",
+    "SN",
+    "AU",
+    "AG",
+    "SC",
+    "FU",
+    "BU",
+    "M",
+    "Y",
+    "P",
+    "RM",
+    "OI",
+    "MA",
+    "SR",
+    "CF",
+    "FG",
+    "SA",
+    "UR",
+    "PP",
+    "L",
+    "C",
+    "CS",
+    "JD",
+    "AP",
+    "CJ",
+    "PK",
+    "SF",
+    "SM",
+    "SP",
+    "RU",
+    "IF",
+    "IH",
+    "IC",
+    "IM"
+  ],
+  "symbols_outside_universe": [],
+  "unmapped_rules": [],
+  "baseline": "hold",
+  "cost_model": {
+    "commission_bps": 3.0,
+    "slippage_bps": 2.0,
+    "sides": 2
+  },
+  "min_trades_for_verdict": 12,
+  "replay_equivalence": {
+    "what_this_is": "daily bar replay (close-to-close with next-open fills)",
+    "what_this_is_not": [
+      "a futures simulation contest / matching engine",
+      "intraday or tick-level execution",
+      "margin, force-liquidation or capital-competition modelling"
+    ],
+    "why_equivalent": "the rule set is declared in trading-day horizons and daily-close triggers, so a daily replay resolves every decision point the rules can express",
+    "where_it_breaks": [
+      "rules that depend on intraday touch order",
+      "limit-locked sessions where no fill is possible",
+      "portfolio-level capital allocation across simultaneous rules",
+      "roll gaps from unadjusted dominant stitching"
+    ]
+  },
+  "extraction_config_hash": "8f9058b5a70c835d6c30ae807c24c4e04d24d9c0fcef5ca62266ec43a39cb701",
+  "in_scope": [
+    "daily-close rules on I, RB over 20240101..20241231",
+    "horizons expressed in trading days",
+    "bars strictly after each opinion's published_at"
+  ],
+  "out_of_scope": [
+    "futures simulation contest / live matching",
+    "intraday entries, limit-order fills, auction mechanics",
+    "position sizing across simultaneous rules",
+    "products outside the declared symbol list",
+    "roll adjustment (unadjusted dominant stitching is used)"
+  ],
+  "fails_when": [
+    "fewer than 12 closed trades",
+    "a rule has no numeric level and no explicit direction",
+    "bars are missing for a declared symbol"
+  ],
+  "scope_hash": "84202194bd2b2045551ff0b86b1c87ebdeb4054d36e312fb953feafb3726a74e"
+}

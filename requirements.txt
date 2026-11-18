@@ -1,2 +1,8 @@
 # 主观观点转可检验规则 — 无三方依赖
-# 可选：panda-data==1.0.6（仅 --panda 真实数据通道需要）
+#
+# 取数不在这里发生：MCP 工具只能由 agent 调用，Python 脚本调不到 MCP。
+# 链路是 agent 调 mcp__pandadata__call_pandadata → 把返回载荷原样写入
+# tests/fixtures/raw/<method>__<label>.json → python3 scripts/mcp_landing.py --build
+# → 之后所有脚本只读本地文件。所以本文件不需要任何包，代码里也没有网络出口和凭证。
+#
+# 本技能不引用任何其他技能的脚本或路径：落点约定见 references/mcp-data.md 与 SKILL.md。

@@ -11,5 +11,32 @@ venv/
 .idea/
 .DS_Store
 
-# runtime output
+# Runtime landing spot for regenerated products — a *product*, never the anchor.
+# `evaluate.py` rewrites this directory on every run, so it is machine-local and
+# must stay out of the package.
 output/
+
+# The acceptance anchor ships with the skill: baselines/frozen_baseline.json and
+# baselines/scope_declaration.json are the frozen reference the specification
+# demands (「冻结基线对照」). An anchor living inside a git-ignored directory does
+# not exist for anyone installing from git, so this negation is load-bearing:
+# it keeps the anchor tracked even if a broad `*.json` rule is added later.
+# It is deliberately scoped to baselines/ — do NOT widen it to `!output/*`, which
+# would put regenerated products back into the package and let two copies each
+# claim to be authoritative.
+!baselines/*.json
+
+# Agent-landed PandaData MCP payloads: verbatim tool responses, machine-local and
+# reproducible by re-running the fetch. Never committed.
+tests/fixtures/raw/*
+!tests/fixtures/raw/README.md
+
+# Bars built from those payloads by scripts/mcp_landing.py --build. Also
+# reproducible, and real market data does not belong in a repo.
+tests/fixtures/landed/*
+!tests/fixtures/landed/README.md
+
+# NOTE: tests/fixtures/*.csv at the top level (bars_RB.csv, bars_I.csv) are the
+# bundled *synthetic* fixtures the docs and the offline tests depend on. They stay
+# committed, and landed real data is deliberately written to a different directory
+# so a real run can never silently shadow a fixture run.

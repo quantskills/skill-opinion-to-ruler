@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import copy
 import json
+import math
 import os
 import sys
 
@@ -527,6 +528,10 @@ def test_english_labelled_sample_scores_perfectly():
     assert report["overall_exact_match"] == 1.0
     for field, m in report["fields"].items():
         assert m["exact_match_rate"] == 1.0, field
+    # Pinned because CHANGELOG quotes it: 10 clean samples is a 0.69 lower bound,
+    # and "the English set scores 1.00" is not a claim about generalisation.
+    assert report["samples_all_fields_correct_ci95_low"] == pytest.approx(0.6915, abs=1e-4)
+    assert report["sufficient_sample_size"] is False
 
 
 def test_bare_target_verb_is_recognised():
@@ -649,3 +654,457 @@ def test_applicability_uses_runtime_scope():
     assert any("RB" in x for x in app["in_scope"])
     assert app["scope_honoured"] is True
     assert app["replay_equivalence"]["what_this_is_not"]
+
+
+# ---------------------------------------------------------------------------
+# Adversarial regressions (found by probing, not by reading the docs)
+#
+# Each test below names the wrong output it used to produce. They exist because
+# the 164 pre-existing cases were all built from sentences the dictionary already
+# handled, so every one of these defects scored 100% while broken.
+# ---------------------------------------------------------------------------
+def _raw(text):
+    """Extraction only: no default policy, so nothing is filled in for the text."""
+    return run({"text": text, "published_at": "2024-01-05T08:30:00+08:00"},
+               {"apply_defaults": False})["documents"][0]
+
+
+def _only_rule(text):
+    d = _raw(text)
+    rules = d["rules"] + d["unruleable"]
+    assert rules, "sentence produced no rule at all: %r" % text
+    return rules[0]
+
+
+# -- 百分比价位曾被当成绝对价位 -----------------------------------------------
+def test_percent_stop_is_not_read_as_an_absolute_level():
+    """「止损3%」used to emit ``close < 3``: a level that triggers on day one.
+
+    A relative stop cannot be executed against a daily-close contract, so the
+    field stays empty and the percentage is reported separately instead of being
+    silently converted into a price.
+    """
+    rule = _only_rule("螺纹钢站上3850做多，目标4100，止损3%。")
+    assert rule["stop_loss"] is None, rule["stop_loss"]
+    assert rule["exit_rule"]["expr"] == "close >= 4100"
+    percents = rule.get("percent_levels") or []
+    assert [p["field"] for p in percents] == ["stop_loss"], percents
+    assert percents[0]["value"] == 3.0, percents
+    assert any("percent" in a["issue"].lower() for a in rule["ambiguity"]), rule["ambiguity"]
+
+
+def test_percent_target_is_not_read_as_an_absolute_level():
+    rule = _only_rule("铁矿石跌破840看空，目标跌3%。")
+    assert rule["direction"] == "short"
+    assert rule["exit_rule"] is None, rule["exit_rule"]
+    assert [p["field"] for p in rule.get("percent_levels") or []] == ["exit_rule"], \
+        rule.get("percent_levels")
+
+
+def test_full_width_percent_sign_is_also_caught():
+    rule = _only_rule("螺纹钢站上3850做多，止损３％。")
+    assert rule["stop_loss"] is None, rule["stop_loss"]
+
+
+# -- 否定式曾被当成反向信号 ---------------------------------------------------
+def test_withdrawn_bullishness_is_neutral_not_short():
+    """「不再看多」used to come back as **long** (negation flipped the sign twice).
+
+    The negation scan matched 不再 by its leading 不 while the level scan then read
+    the sentence as bullish. Withdrawing a view is not the opposite view: the
+    honest answer is stand-aside, never an invented position.
+    """
+    rule = _only_rule("螺纹钢不再看多，跌破3780不追。")
+    assert rule["direction"] == "neutral", rule["direction"]
+    assert rule["testability"] == "neutral", rule["testability"]
+
+
+def test_double_negation_still_reads_the_stated_direction():
+    """「不看空，站上900才算转多」states a long: the unnegated word wins."""
+    rule = _only_rule("铁矿石不看空，站上900才算转多。")
+    assert rule["direction"] == "long"
+    assert rule["testability"] == "partial"
+
+
+def test_negation_is_reported_even_when_direction_is_clear():
+    rule = _only_rule("铁矿石不看空，站上900才算转多。")
+    issues = " ".join(a["issue"] for a in rule["ambiguity"])
+    assert "negation" in issues or "neutral" in issues.lower(), rule["ambiguity"]
+
+
+# -- 裸代码与合约号 -----------------------------------------------------------
+@pytest.mark.parametrize("code,symbol", [("RB", "RB"), ("I", "I"), ("HC", "HC"),
+                                         ("AU", "AU"), ("SC", "SC")])
+def test_bare_exchange_code_maps_to_the_product(code, symbol):
+    """Codes used to be recognised only next to CJK text: 「RB看多」vanished."""
+    rule = _only_rule("%s看多，站上3850，止损3780。" % code)
+    assert rule["instrument"]["symbol"] == symbol, rule["instrument"]
+    assert rule["instrument"]["mapping_rule"] == "code_to_symbol"
+
+
+def test_contract_number_maps_to_product_and_keeps_the_contract():
+    """「RB2405…」used to emit symbol ``RB2405``, which no scope can serve."""
+    rule = _only_rule("RB2405站上3850看多，目标4100，止损3780。")
+    inst = rule["instrument"]
+    assert inst["symbol"] == "RB", inst
+    assert inst["contract"] == "specific", inst
+    assert inst.get("contract_code") == "RB2405", inst
+    assert inst["mapping_rule"] == "contract_to_product", inst
+
+
+def test_contract_code_survives_a_digit_suffix_that_is_not_a_code():
+    """Prices must not be mistaken for contract months (RB 3850 is not a month)."""
+    rule = _only_rule("RB站上3850看多，止损3780。")
+    assert rule["instrument"]["symbol"] == "RB"
+    assert rule["entry_trigger"]["expr"] == "close > 3850", rule["entry_trigger"]
+
+
+def test_single_letter_english_word_is_not_iron_ore():
+    """``I`` is iron ore only against CJK text, else 「I think…」would trade iron ore."""
+    d = _raw("I think rebar looks cheap here.")
+    assert not [r for r in d["rules"] if (r.get("instrument") or {}).get("symbol") == "I"], \
+        d["rules"]
+
+
+# -- 跨子句价格串味 -----------------------------------------------------------
+def test_two_instruments_in_one_sentence_yield_two_rules_with_own_levels():
+    """Used to become ONE rebar rule whose stop was iron ore's level.
+
+    「螺纹钢多头铁矿空头」is two positions, not a contradiction. Attaching 840
+    (iron ore) to rebar produced a stop that could never trigger, so the trade
+    rode to horizon while looking like a risk-managed one.
+    """
+    d = _raw("螺纹钢多头铁矿空头，RB看3850上方，I看840下方。")
+    assert len(d["rules"]) == 2, d["rules"]
+    rb, i = d["rules"]
+    assert rb["instrument"]["symbol"] == "RB" and rb["direction"] == "long"
+    assert i["instrument"]["symbol"] == "I" and i["direction"] == "short"
+    assert (rb.get("stop_loss") or {}).get("expr") != "close > 840", rb.get("stop_loss")
+    assert (i.get("stop_loss") or {}).get("expr") != "close < 3780", i.get("stop_loss")
+    assert rb["entry_trigger"]["expr"] == "close > 3850", rb["entry_trigger"]
+    assert i["entry_trigger"]["expr"] == "close < 840", i["entry_trigger"]
+
+
+def test_rule_ids_count_rules_not_sentences():
+    d = _raw("螺纹钢多头铁矿空头，RB看3850上方，I看840下方。")
+    ids = [r["rule_id"] for r in d["rules"]]
+    assert ids == ["doc001-r01", "doc001-r02"], ids
+
+
+def test_zone_word_does_not_become_a_profit_target():
+    """「看3850上方」is a trigger zone. Reading it as target 3850 produced a rule
+    whose exit equalled its entry: the trade settled on the same bar it opened."""
+    rule = _only_rule("螺纹钢多头，RB看3850上方。")
+    assert rule["entry_trigger"]["expr"] == "close > 3850", rule["entry_trigger"]
+    assert rule["exit_rule"] is None, rule["exit_rule"]
+
+
+# -- 价位合理性 ---------------------------------------------------------------
+def test_stop_on_the_wrong_side_of_entry_is_dropped_not_emitted():
+    """「螺纹钢站上3850做多，止损3900」used to emit a stop that fires on entry."""
+    rule = _only_rule("螺纹钢站上3850做多，止损3900。")
+    assert rule["stop_loss"] is None, rule["stop_loss"]
+    assert any("wrong side" in a["issue"] for a in rule["ambiguity"]), rule["ambiguity"]
+
+
+def test_level_from_a_different_price_range_is_dropped():
+    """铁矿石 quoted at 3780 belongs to another market: 5x outside its window."""
+    rule = _only_rule("铁矿石看多，站上840，止损3780。")
+    assert rule["stop_loss"] is None, rule["stop_loss"]
+
+
+# -- 不可交易条目不得带着可执行指令 -------------------------------------------
+def test_unmapped_instrument_gets_no_market_order():
+    """期权 in the text, no instrument mapped: entry stays empty.
+
+    An unruleable item carrying ``market_on_next_open`` reads as a ready-to-run
+    signal to anyone consuming the JSON.
+    """
+    d = _raw("50ETF购3月2500看多。")
+    assert d["rules"] == [], d["rules"]
+    assert d["unruleable"][0]["testability"] == "none"
+    assert d["unruleable"][0]["entry_trigger"] is None, d["unruleable"][0]
+
+
+def test_position_sizing_word_is_not_a_direction():
+    """「减仓」manages an existing position; it is not a new short signal."""
+    rule = _only_rule("IC主力5200下方减仓。")
+    assert rule["direction"] in (None, "neutral"), rule["direction"]
+
+
+def test_entry_default_is_visible_to_machines():
+    """The substitution used to exist only in prose; nothing could check it."""
+    rule = _only_rule("铁矿石看多，目标950，止损860。")
+    assert rule["entry_trigger"]["expr"] == "market_on_next_open", rule["entry_trigger"]
+    entries = [a for a in rule["assumed"] if a["field"] == "entry_trigger"]
+    assert entries and entries[0]["stage"] == "extraction", rule["assumed"]
+
+
+def test_unruleable_reason_names_the_missing_field():
+    """「no instrument or no direction」was true but useless for an A-share name."""
+    stock = _only_rule("中科星图看多，站上60，止损55。")
+    assert "instrument" in stock["reason"] and "direction" not in stock["reason"], stock["reason"]
+    macro = _only_rule("明年黑色系整体环境应该比今年好。")
+    assert "instrument" in macro["reason"] and "direction" in macro["reason"], macro["reason"]
+
+
+def test_every_rule_keeps_the_sentence_it_came_from():
+    rule = _only_rule("螺纹钢主力站上3900看多，目标4150，止损3830。")
+    assert "螺纹钢" in rule["source_text"], rule
+    assert "source_span" not in rule, \
+        "duplicate of source_text; a second field for one fact invites drift"
+
+
+def test_percent_levels_are_a_separate_channel_from_price_levels():
+    """Relative levels must not pollute the absolute-price vocabulary.
+
+    They are reported so a human can act on them, and kept out of every ``expr``
+    because the matcher only executes absolute daily-close conditions.
+    """
+    rule = _only_rule("螺纹钢站上3850做多，目标4100，止损3%。")
+    exprs = [r["expr"] for r in (rule["entry_trigger"], rule["stop_loss"], rule["exit_rule"]) if r]
+    assert exprs == ["close > 3850", "close >= 4100"], exprs
+    first = rule["percent_levels"][0]
+    assert first["phrase"] == "3%", first
+    assert first["value"] == 3.0 and first["field"] == "stop_loss", first
+
+
+# ---------------------------------------------------------------------------
+# Metric honesty: Sharpe must describe per-trade returns
+# ---------------------------------------------------------------------------
+def _trades(nets, held):
+    return [{"net_return": n, "held_bars": h} for n, h in zip(nets, held)]
+
+
+def test_sharpe_is_not_annualised_by_the_daily_constant():
+    """Per-trade returns scaled by ``sqrt(244)`` read 15x too high.
+
+    The fixture anchor published Sharpe 11.85 for a strategy whose per-trade
+    mean/sd was 0.76. 244 is bars per year; the returns being scaled arrive once
+    per round trip, not once per bar.
+    """
+    import backtest
+
+    nets = [0.02, -0.01, 0.03, 0.01, -0.02]
+    held = [5, 5, 5, 5, 5]
+    m = backtest.sharpe_metrics(_trades(nets, held))
+    mean = sum(nets) / len(nets)
+    sd = (sum((r - mean) ** 2 for r in nets) / (len(nets) - 1)) ** 0.5
+    ratio = mean / sd
+    assert m["sharpe_per_trade"] == pytest.approx(round(ratio, 3), abs=1e-9), m
+    assert m["sharpe"] == pytest.approx(round(ratio * (244 / 5.0) ** 0.5, 3), abs=1e-9), m
+    assert abs(m["sharpe"]) < abs(ratio) * (244 ** 0.5) * 0.5, (
+        "the annualised figure must not sit anywhere near the sqrt(244) scaling")
+
+
+def test_sharpe_reports_the_basis_it_used():
+    import backtest
+
+    m = backtest.sharpe_metrics(_trades([0.01, 0.02], [4, 6]))
+    assert "trades_per_year" in m["sharpe_basis"], m
+    assert m["sharpe_held_bars_coverage"] == "2/2", m
+    assert m["sharpe_trades_per_year"] == round(244 / 5.0, 3), m
+
+
+def test_sharpe_refuses_to_annualise_without_holding_periods():
+    import backtest
+
+    trades = [{"net_return": 0.01}, {"net_return": 0.02}]
+    m = backtest.sharpe_metrics(trades)
+    assert m["sharpe"] is None, m
+    assert m["sharpe_per_trade"] is not None, m
+    assert "cannot annualise" in m["sharpe_basis"], m
+
+
+def test_sharpe_needs_two_trades():
+    import backtest
+
+    m = backtest.sharpe_metrics([{"net_return": 0.01, "held_bars": 5}])
+    assert m["sharpe"] is None and m["sharpe_per_trade"] is None, m
+
+
+# ---------------------------------------------------------------------------
+# Annotation: a perfect score must not read as proof
+# ---------------------------------------------------------------------------
+def test_policy_filled_field_is_not_scored_as_a_prediction():
+    """Gold says "the text states nothing"; a policy default must not win a TP.
+
+    Three bundled labels used to carry ``market_on_next_open`` as gold even
+    though the sentences state no entry condition, so the policy was grading its
+    own homework and ``accuracy 1.0`` partly measured the default, not the reading.
+    """
+    sample = {"samples": [{"id": "x1", "text": "铁矿石看多，目标950，止损860。",
+                           "published_at": "2024-01-05T08:30:00+08:00",
+                           "labels": {"entry_expr": None, "instrument_symbol": "I",
+                                      "direction": "long", "stop_expr": "close < 860",
+                                      "exit_expr": "close >= 950", "horizon_days": None,
+                                      "testability": "partial"}}]}
+    report = annotate.score(sample)
+    entry = report["fields"]["entry_expr"]
+    assert entry["policy_default"] == 1, entry
+    assert entry["tp"] == 0, entry
+    assert entry["fp"] == 0, "a documented default must not be punished either"
+    assert entry["exact_match_text_only"] is None, entry
+
+
+def test_real_fabrication_is_still_a_false_positive():
+    """The policy-default carve-out must stay narrow: text-derived values count.
+
+    A value the sentence *did* state, labelled as absent, is the extractor
+    inventing something the author never said. That has to stay a false positive,
+    or the ``policy_default`` escape hatch would become a general pardon.
+    """
+    sample = {"samples": [{"id": "x1", "text": "螺纹钢站上3850看多，目标4100，止损3780。",
+                           "published_at": "2024-01-05T08:30:00+08:00",
+                           "labels": {"instrument_symbol": "RB", "direction": "long",
+                                      "entry_expr": "close > 3850",
+                                      "stop_expr": None,          # gold claims: unstated
+                                      "exit_expr": "close >= 4100",
+                                      "horizon_days": None, "testability": "partial"}}]}
+    report = annotate.score(sample)
+    stop = report["fields"]["stop_expr"]
+    assert stop["fp"] == 1, stop
+    assert stop["policy_default"] == 0, stop
+    assert stop["exact_match_text_only"] is not None, stop
+
+
+def test_clopper_pearson_bound_is_published_and_below_one():
+    """16/16 correct is compatible with a true rate near 0.79, and must say so."""
+    report = annotate.score({"samples": [
+        {"id": "s%d" % i, "text": "螺纹钢站上3850看多，止损3800。",
+         "published_at": "2024-01-05T08:30:00+08:00",
+         "labels": {"instrument_symbol": "RB", "direction": "long",
+                    "entry_expr": "close > 3850", "stop_expr": "close < 3800",
+                    "exit_expr": None, "horizon_days": None, "testability": "partial"}}
+        for i in range(16)]})
+    field = report["fields"]["direction"]
+    assert field["exact_match_rate"] == 1.0
+    assert field["exact_match_ci95_low"] == pytest.approx(0.025 ** (1 / 16.0), abs=2e-4), field
+    assert report["samples_all_fields_correct_ci95_low"] < 0.9, report
+    assert report["sufficient_sample_size"] is False
+    assert "lower bound" in report["sample_size_note"]
+
+
+def test_clopper_pearson_matches_a_known_value():
+    """Cross-check against the binomial definition, not a remembered table number.
+
+    ``L`` is the value where ``P(X >= k | p = L) = alpha/2``, so the beta
+    inversion in ``annotate`` is verifiable by solving the same equation directly
+    with integer binomials. Two independent routes agreeing is worth more than a
+    quoted constant: the first version of this test cited ``0.2026`` for 8/20
+    from memory, while the definition gives ``0.1912``.
+    """
+    def tail(k, n, p):
+        if p <= 0.0:
+            return 0.0
+        if p >= 1.0:
+            return 1.0
+        return sum(math.comb(n, j) * p ** j * (1 - p) ** (n - j)
+                   for j in range(k, n + 1))
+
+    def solve(k, n, alpha=0.025):
+        lo, hi = 0.0, 1.0
+        for _ in range(300):
+            mid = (lo + hi) / 2.0
+            if tail(k, n, mid) > alpha:
+                hi = mid
+            else:
+                lo = mid
+        return (lo + hi) / 2.0
+
+    for k, n in [(8, 20), (5, 10), (20, 26), (1, 20), (3, 7)]:
+        assert annotate.clopper_pearson_lower(k, n) == pytest.approx(solve(k, n), abs=2e-4), \
+            (k, n)
+    assert annotate.clopper_pearson_lower(0, 10) == 0.0
+    assert annotate.clopper_pearson_lower(10, 10) == pytest.approx(0.025 ** 0.1, abs=2e-4)
+    assert annotate.clopper_pearson_lower(5, 0) is None
+
+
+def test_list_labels_score_every_rule_of_a_multi_instrument_sentence():
+    """A sentence with two products must be checkable as two rules, not one."""
+    sample = {"samples": [{"id": "x2", "text": "螺纹钢多头铁矿空头，RB看3850上方，I看840下方。",
+                           "published_at": "2024-01-05T08:30:00+08:00",
+                           "labels": [
+                               {"instrument_symbol": "RB", "direction": "long",
+                                "entry_expr": "close > 3850", "stop_expr": None,
+                                "exit_expr": None, "horizon_days": None,
+                                "testability": "partial"},
+                               {"instrument_symbol": "I", "direction": "short",
+                                "entry_expr": "close < 840", "stop_expr": None,
+                                "exit_expr": None, "horizon_days": None,
+                                "testability": "partial"}]}]}
+    report = annotate.score(sample)
+    assert report["rule_count_mismatches"] == 0, report["rule_count_mismatches"]
+    assert report["fields"]["instrument_symbol"]["judgements"] == 2
+    assert report["fields"]["instrument_symbol"]["exact_match_rate"] == 1.0
+
+
+def test_missing_second_rule_is_counted_as_a_mismatch():
+    sample = {"samples": [{"id": "x3", "text": "螺纹钢站上3850看多。",
+                           "published_at": "2024-01-05T08:30:00+08:00",
+                           "labels": [{"instrument_symbol": "RB", "direction": "long",
+                                       "entry_expr": "close > 3850", "stop_expr": None,
+                                       "exit_expr": None, "horizon_days": None,
+                                       "testability": "partial"},
+                                      {"instrument_symbol": "I", "direction": "short",
+                                       "entry_expr": None, "stop_expr": None,
+                                       "exit_expr": None, "horizon_days": None,
+                                       "testability": "partial"}]}]}
+    report = annotate.score(sample)
+    assert report["rule_count_mismatches"] == 1, report
+    assert report["fields"]["instrument_symbol"]["fn"] >= 1
+
+
+def test_bundled_labels_cover_the_probed_forms(labels):
+    """The fixture must keep containing the wording that used to break things."""
+    texts = " ".join(s["text"] for s in labels["samples"])
+    required = {
+        "百分比止损": "止损3%",
+        "撤回看多": "不再看多",
+        "裸代码": "RB看多",
+        "单字母裸代码": "I看空",
+        "合约号": "RB2405",
+        "一句两标的": "螺纹钢多头铁矿空头",
+        "仓位管理": "减仓",
+        "观望口语": "不建议参与",
+    }
+    for name, needle in required.items():
+        assert needle in texts, "labels no longer cover %s (%r)" % (name, needle)
+    multi = [s for s in labels["samples"] if isinstance(s.get("labels"), list)]
+    assert multi, "no list-labelled multi-rule sample remains in the fixture"
+
+
+def test_bundled_labels_do_not_copy_the_entry_default_as_gold(labels):
+    """Gold must stay independent of what the extractor happens to emit."""
+    offenders = [s["id"] for s in labels["samples"]
+                 if (s["labels"] == {} or isinstance(s["labels"], dict))
+                 and s["labels"].get("entry_expr") == "market_on_next_open"]
+    assert not offenders, "%s claim a market order the text never stated" % offenders
+    stated = sum(1 for s in labels["samples"]
+                 if isinstance(s["labels"], dict) and s["labels"].get("entry_expr") is None)
+    assert stated >= 3, "the fixture must keep examples where the text states no trigger"
+
+
+# -- 进场俚语"上车"曾被整句丢弃 -------------------------------------------------
+def test_entry_colloquialism_yields_a_long_rule():
+    """"上车" is the commonest informal way of saying "go long" in Chinese chatter.
+
+    A whitelist that misses it does not fail safe, it fails *silent*: the sentence
+    carries an instrument, an entry condition and a stop, and all three were thrown
+    away as "no direction wording". The cost of the miss is asymmetric with the risk
+    of admitting it, because negation still overrides it (see the next test).
+    """
+    rule = _only_rule(u"螺纹钢突破3900就上车，止损3800。")
+    assert rule["direction"] == "long", rule
+    assert rule["instrument"]["symbol"] == "RB", rule["instrument"]
+    assert rule["entry_trigger"]["expr"] == "close > 3900", rule["entry_trigger"]
+    assert rule["stop_loss"]["expr"] == "close < 3800", rule["stop_loss"]
+    # No horizon in the text: partial, and it stays partial under extraction-only.
+    assert rule["testability"] == "partial", rule["testability"]
+
+
+def test_negation_still_overrides_the_colloquialism():
+    """Adding a long word must not weaken the negation rule: 别上车 == stay out."""
+    rule = _only_rule(u"螺纹钢突破3900也别上车，止损3800。")
+    assert rule["direction"] == "neutral", rule
+    assert rule["testability"] == "neutral", rule
