@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: skill-opinion-to-ruler
   description: Extract testable trading rules from subjective market opinions. Maps free-form text into instrument, direction, entry trigger, horizon, stop loss and exit rule; validates extraction against a human-labelled sample; evaluates cost-adjusted results against a paired buy-and-hold baseline.
-  version: 0.7.1
+  version: 0.8.0
 
 x-skill-info:
   name: skill-opinion-to-ruler
@@ -28,6 +28,11 @@ x-steps:
     script: scripts/evaluate.py
     description: End-to-end extraction, label scoring, paired-baseline backtest and verdict. Pass --check-baseline baselines/frozen_baseline.json to verify the run against the shipped frozen anchor in the same command (read-only; non-zero exit on any changed field).
     auth_required: false
+  - id: contest_verify
+    script: scripts/contest_verify.py
+    description: Reconcile this skill's execution-cost assumptions against the futures simulation contest's live book (variety enablement, contract multiplier, four margins, half-spread, last trade date). Reads agent-landed payloads only; never calls the network and never places an order.
+    args: "--raw tests/fixtures/contest/raw --json"
+    auth_required: false
   - id: anchor_check
     script: scripts/compare_baseline.py
     description: Read-only acceptance guard. Re-runs the deterministic bundled fixtures and compares every field against the shipped anchor baselines/frozen_baseline.json plus baselines/scope_declaration.json; names each field that moved (frozen -> new) and exits 1. Reads files only; never fetches.
@@ -47,6 +52,11 @@ x-preflight:
       check: "supplied by the host; this skill holds no endpoint and no key"
     - id: interpreter
       check: "scripts are standard-library only; tests need `import pytest`"
+    - id: contest_channel
+      check: "host trading channel reachable for resolve / quote / contract-spec / account (scripts/contest_verify.py)"
+      blocking_when: "running the contest execution-cost reconciliation"
+      on_fail: "report which payload is missing; never read spec checks as verified execution"
+      order_confirmation: "each real order requires the user's explicit confirmation; without fill receipts execution stays not_verified"
 
 x-acceptance-anchor:
   reference: baselines/frozen_baseline.json

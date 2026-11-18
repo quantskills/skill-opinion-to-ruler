@@ -31,6 +31,13 @@ output/
 tests/fixtures/raw/*
 !tests/fixtures/raw/README.md
 
+# Agent-landed futures simulation-contest payloads (host trading-channel responses:
+# quote, contract-spec, resolve, account, orders, fills). They are machine-local, they
+# expire, and they carry account-derived numbers, so they never ship. What ships is the
+# derived, identity-stripped report under baselines/ — see references/contest_verification.md.
+tests/fixtures/contest/raw/*
+!tests/fixtures/contest/raw/README.md
+
 # Bars built from those payloads by scripts/mcp_landing.py --build. Also
 # reproducible, and real market data does not belong in a repo.
 tests/fixtures/landed/*

@@ -256,7 +256,7 @@ def _row_of(markdown_section: str, needle: str) -> str:
 # 2. Documented case counts
 # ---------------------------------------------------------------------------
 TEST_FILES = ("test_ruler.py", "test_mcp_landing.py", "test_docs.py",
-              "test_baseline_guard.py", "test_preflight.py")
+              "test_baseline_guard.py", "test_preflight.py", "test_contest_verify.py")
 
 
 def _collected(test_file: str) -> int:

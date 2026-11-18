@@ -6,6 +6,42 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [0.8.0] — 2026-11-19
+
+套件规模：164 → 243 条用例，累计新增 79 条（0.8.0 补 `tests/test_contest_verify.py` 17 例；
+计数按 `pytest --collect-only` 实测）。本次仍是 **non-breaking**：判定规则、成本默认值、
+两个锚点的数字都没动（本包唯一一次 breaking 仍是 0.4.0 移除旧取数通道、改由 agent 经
+PandaData MCP 落盘）。
+
+### Added — 把「等价回放」的执行口径拿到期货仿真大赛下对账
+
+任务原文要求「交易执行部分用期货模拟赛核验；品种或接口不支持时事先明确等价回放范围」。
+0.7.x 只做了后半句，于是 `次日开盘成交 + 单边 3bp 手续费 + 2bp 滑点` 这三个常数从来没被量过。
+
+- `scripts/contest_verify.py`（纯标准库、只读本地落盘载荷、不下单、不联网）：品种是否真在撮合
+  系统启用、合约乘数、四项保证金与每手保证金、半价差实测跨价成本、最后交易日与交割日
+  （缺失写 `暂无数据`，**不许**用最后交易日顶替）
+- `references/contest_verification.md` + `tests/fixtures/contest/raw/README.md`（落盘契约与脱敏规则）
+- `baselines/contest_verify_20261119.json`：随包发布的核验报告（已剥离账号/手机号/用户名）
+- `SKILL.md` 新增「仿真大赛核验」小节与前置检查第 5 项；`agents/openai.yaml` 新增
+  `contest_verify` 步骤与 `contest_channel` 前置项
+- `tests/test_contest_verify.py` 17 例：缺载荷必须报错而不是给绿灯、`ready=false` 不许把 0 当
+  最新价、买卖一价同价（锁死盘口）只能算规格核验、手续费无回执一律 `unverified`、
+  执行核验在无成交回执时永远 `not_verified`、身份字段不得进报告
+
+### Measured（2026-11-19 实跑，rb2701 / i2701）
+
+- 规格全部对上：SHF/DCE 均启用；乘数 10 / 100；保证金 7% / 8%；每手 2,089.50 元 / 5,184.00 元；
+  最后交易日 20270115（距 57 个日历日）；交割日暂无数据
+- **滑点被低估**：实测单边跨价成本（半价差）RB 3.35 bp、I 3.86 bp，是 2 bp 假设的
+  1.68x / 1.93x → verdict `cost_model_below_market`
+- **但结论不因此翻转**：配对基线两臂扣同一笔成本，edge 完全抵消 —— `--slippage-bps` 取
+  2 / 3.3512 / 3.8595 / 5.0 四档，`edge −0.018527  CI [−0.028301, −0.00856]  n=10
+  verdict INCONCLUSIVE` 一字不变；传导到的是绝对收益侧：`mean net 0.0195 → 0.019128`、
+  `Sharpe 5.411 → 5.307`、`maxDD −0.01378 → −0.014152`
+- 手续费与撮合执行仍是 `unverified` / `not_verified`：没有成交回执，且下单必须逐笔经用户
+  明确确认 —— 这一条没做，报告就不允许声称执行已核验
+
 ## [0.7.1] — 2026-11-18
 
 套件规模：164 → 225 条用例，累计新增 61 条（这 61 条随 0.7.0 落盘，0.7.1 只统一

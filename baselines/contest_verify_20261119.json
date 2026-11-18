@@ -1,0 +1,163 @@
+{
+  "kind": "contest-verification",
+  "verdict": "cost_model_below_market",
+  "spec": {
+    "checked_products": [
+      "RB",
+      "I"
+    ],
+    "unchecked_products_note": "其余 SUPPORTED_PRODUCTS 未核验，不猜测其可交易性",
+    "products": [
+      {
+        "product": "RB",
+        "verdict": "cost_model_below_market",
+        "checks": {
+          "quote_ready": {
+            "status": "ok",
+            "detail": "2026-11-18 230000"
+          },
+          "contest_mapping": {
+            "status": "ok",
+            "detail": {
+              "exchange": "SHF",
+              "enabled": true,
+              "resolve_status": "exact"
+            }
+          },
+          "contract": {
+            "status": "ok",
+            "detail": {
+              "contract_code": "rb2701",
+              "latest_price": 2985.0,
+              "contract_multiplier": 10,
+              "margin_ratio_pct": 7.0,
+              "margin_per_lot_cny": 2089.5,
+              "last_trade_date": "20270115",
+              "delivery_date": null,
+              "delivery_date_status": "unavailable"
+            }
+          },
+          "crossing_cost": {
+            "status": "diverged",
+            "detail": {
+              "assumed_slippage_bp_per_side": 2.0,
+              "bid_price1": 2983,
+              "ask_price1": 2985,
+              "quoted_spread_bp": 6.7024,
+              "half_spread_bp_per_side": 3.3512,
+              "half_spread_over_assumed_slippage": 1.676
+            }
+          },
+          "commission": {
+            "status": "unverified",
+            "detail": {
+              "assumed_fee_bp_per_side": 3.0,
+              "assumed_round_trip_bp": 10.0,
+              "observed": null,
+              "why": "手续费只能由成交/结算回执量出；当前无成交回执，0 不等于免费"
+            }
+          },
+          "expiry": {
+            "status": "ok",
+            "detail": {
+              "calendar_days_to_last_trade": 57,
+              "floor_days": 30,
+              "basis": "日历日下限，不是精确交易日推算"
+            }
+          }
+        },
+        "notes": [
+          "回测单边滑点假设 2bp，盘口半价差实测 3.35gbp（1.68x）：市价 IOC 至少要吃掉这一层，「成本后 edge」比报告更薄"
+        ]
+      },
+      {
+        "product": "I",
+        "verdict": "cost_model_below_market",
+        "checks": {
+          "quote_ready": {
+            "status": "ok",
+            "detail": "2026-11-19 230000"
+          },
+          "contest_mapping": {
+            "status": "ok",
+            "detail": {
+              "exchange": "DCE",
+              "enabled": true,
+              "resolve_status": "exact"
+            }
+          },
+          "contract": {
+            "status": "ok",
+            "detail": {
+              "contract_code": "i2701",
+              "latest_price": 648.0,
+              "contract_multiplier": 100,
+              "margin_ratio_pct": 8.0,
+              "margin_per_lot_cny": 5184.0,
+              "last_trade_date": "20270115",
+              "delivery_date": null,
+              "delivery_date_status": "unavailable"
+            }
+          },
+          "crossing_cost": {
+            "status": "diverged",
+            "detail": {
+              "assumed_slippage_bp_per_side": 2.0,
+              "bid_price1": 647.5,
+              "ask_price1": 648,
+              "quoted_spread_bp": 7.719,
+              "half_spread_bp_per_side": 3.8595,
+              "half_spread_over_assumed_slippage": 1.93
+            }
+          },
+          "commission": {
+            "status": "unverified",
+            "detail": {
+              "assumed_fee_bp_per_side": 3.0,
+              "assumed_round_trip_bp": 10.0,
+              "observed": null,
+              "why": "手续费只能由成交/结算回执量出；当前无成交回执，0 不等于免费"
+            }
+          },
+          "expiry": {
+            "status": "ok",
+            "detail": {
+              "calendar_days_to_last_trade": 57,
+              "floor_days": 30,
+              "basis": "日历日下限，不是精确交易日推算"
+            }
+          }
+        },
+        "notes": [
+          "回测单边滑点假设 2bp，盘口半价差实测 3.86gbp（1.93x）：市价 IOC 至少要吃掉这一层，「成本后 edge」比报告更薄"
+        ]
+      }
+    ]
+  },
+  "execution": {
+    "verdict": "not_verified",
+    "detail": {
+      "orders_payloads": [],
+      "trades_payloads": []
+    },
+    "why": "没有真实成交回执。规格与成本对账不等于撮合核验，不得据此声称「模拟赛已核验执行口径」。"
+  },
+  "capital": {
+    "verdict": "ok",
+    "detail": {
+      "available_funds": 5000000,
+      "start_capital": 5000000,
+      "margin_used": 0,
+      "risk_rate": 0,
+      "trade_date": "20261119"
+    },
+    "why": "只用资金规模判断「1 手是否负担得起」，不据此推断策略好坏。"
+  },
+  "assumptions_reconciled": {
+    "fill_model": "next-bar open（backtest.simulate_rule）",
+    "cost_per_side_bp": 5.0,
+    "cost_round_trip_bp": 10.0,
+    "one_lot_per_rule": true
+  },
+  "redaction": "报告只含规格与成本数字；账号、手机号、用户名、俱乐部信息不落盘"
+}

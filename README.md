@@ -42,6 +42,8 @@ skill-opinion-to-ruler/
 │   ├── backtest.py      ← 无未来函数回测 + 配对基线 + 判定
 │   ├── annotate.py      ← 逐字段标注评分
 │   ├── evaluate.py      ← 端到端验收与报告落盘
+│   ├── scope.py           ← 开跑前冻结范围声明（等价回放口径，跑完不许改）
+│   ├── contest_verify.py  ← 仿真大赛执行口径对账（只读落盘载荷，不下单）
 │   └── compare_baseline.py ← 只读守卫：重跑结果逐项核对冻结锚点
 ├── baselines/           ← 冻结参照（验收锚点，随包发布、入库）
 │   ├── frozen_baseline.json
@@ -51,8 +53,9 @@ skill-opinion-to-ruler/
 │   ├── test_ruler.py          ← 113 个用例（抽取 / 回测 / 范围）
 │   ├── test_mcp_landing.py    ← 39 个用例（落盘载荷解析、截断守卫、provenance 与拼接归属）
 │   ├── test_docs.py           ← 18 个用例（文档数字=实跑结果）
-│   ├── test_baseline_guard.py ← 52 个用例（重跑逐字段核对 baselines/ 锚点 + 负路径 + 打包守卫）
+│   ├── test_baseline_guard.py ← 53 个用例（重跑逐字段核对 baselines/ 锚点 + 负路径 + 打包守卫）
 │   ├── test_preflight.py      ← 3 个用例（前置检查契约：MCP 会话 / 权限探针 / 模型归宿主 / 不过就停并报告缺什么）
+│   ├── test_contest_verify.py ← 17 个用例（仿真大赛口径对账：缺证据必须不结论、锁死盘口不算成本已核验、交割日不许顶替、身份字段不外泄）
 
 │   └── fixtures/
 │       ├── bars_*.csv      ← 内置合成行情（--fixture 用）
@@ -87,11 +90,14 @@ python3 scripts/mcp_landing.py --build
 python3 scripts/evaluate.py --landed-dir tests/fixtures/landed --start 20240101 --end 20241231
 
 # 5. 核对冻结基线（只读）：从确定性夹具重跑一遍，与 baselines/ 逐项比对
+# 执行口径核验：先由 agent 落盘仿真大赛载荷，再只读对账（references/contest_verification.md）
+python3 scripts/contest_verify.py --out baselines/contest_verify_$(date +%Y%m%d).json
+
 python3 scripts/compare_baseline.py
 python3 scripts/evaluate.py --fixture --check-baseline baselines/frozen_baseline.json
 
 # 6. 测试
-python3 -m pytest tests/ -v          # 225 个用例（113 + 39 + 18 + 52 + 3，见下方 tests/ 目录树）
+python3 -m pytest tests/ -v          # 243 个用例（113 + 39 + 18 + 53 + 3 + 17，见下方 tests/ 目录树）
 ```
 
 验收锚点是**随包发布的交付物**：`baselines/frozen_baseline.json`（冻结参照）与
