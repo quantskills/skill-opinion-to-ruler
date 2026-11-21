@@ -1,6 +1,6 @@
 {
   "name": "skill-opinion-to-ruler",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "entrypoint": "SKILL.md",
   "runtime": "python>=3.8",
   "license": "GPL-3.0-only",
@@ -20,7 +20,11 @@
       "description": "同标的、同起止日期的买入持有，配对比较；cash 为可选零收益基线。",
       "frozen": true
     },
-    "cost_model": {"commission_bps": 3.0, "slippage_bps": 2.0, "sides": 2},
+    "cost_model": {
+      "commission_bps": 3.0,
+      "slippage_bps": 2.0,
+      "sides": 2
+    },
     "min_trades_for_verdict": 12,
     "verdict_rules": "positive: n>=12 and CI_low>0; negative: n>=12 and CI_high<=0; otherwise inconclusive",
     "group_by": "source",

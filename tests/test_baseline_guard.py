@@ -1310,3 +1310,43 @@ def test_ignoring_machine_paths_does_not_hide_a_real_regression(tmp_path):
     )
     assert result["ok"] is False
     assert [d["field"] for d in result["sections"][0]["diffs"]] == ["backtest.mean_net"]
+
+
+def test_checksums_match_the_shipped_evidence():
+    """`checksums.json` 必须与目录内实物一致，且覆盖全部派生文件。
+
+    这份清单是「无 raw 载荷的第三方」验证派生链的唯一锚：他们按
+    `refetch_params` 复取、重建、比 sha256。清单与实物一旦漂移，
+    该验证路径就静默失效——所以无条件守卫（不依赖 raw、网络或登录）。
+    """
+    import hashlib
+
+    with open(os.path.join(EVIDENCE_DIR, "checksums.json"), encoding="utf-8") as fh:
+        manifest = json.load(fh)
+    files = manifest["files"]
+
+    expected_names = {name for name in os.listdir(EVIDENCE_DIR)
+                      if name.endswith(".csv") or name == "provenance.json"}
+    assert set(files) == expected_names, (
+        "checksums.json 覆盖集合与目录实物不一致: 多 %s 缺 %s"
+        % (sorted(set(files) - expected_names), sorted(expected_names - set(files))))
+
+    for name, digest in files.items():
+        with open(os.path.join(EVIDENCE_DIR, name), "rb") as fh:
+            actual = hashlib.sha256(fh.read()).hexdigest()
+        assert actual == digest, "%s: manifest=%s actual=%s" % (name, digest, actual)
+
+    # 复取配方必须与 provenance 的请求窗口互相印证
+    with open(os.path.join(EVIDENCE_DIR, "provenance.json"), encoding="utf-8") as fh:
+        prov = json.load(fh)
+    assert len(manifest["refetch_params"]) == 4
+    for entry in manifest["refetch_params"]:
+        assert entry["method"] in ("get_future_daily", "get_future_dominant")
+        assert entry["params"]["start_date"] >= "20240102"
+        assert entry["params"]["end_date"] <= "20240628"
+        assert entry["lands_as"].endswith(".json")
+    # provenance 里每个文件声明的来源载荷都必须在复取配方里出现
+    lands = {e["lands_as"] for e in manifest["refetch_params"]}
+    for meta in prov["files"].values():
+        for payload in meta["payloads"]:
+            assert payload in lands, "provenance 引用了复取配方之外的载荷: %s" % payload

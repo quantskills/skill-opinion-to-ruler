@@ -55,7 +55,7 @@ skill-opinion-to-ruler/
 │   ├── test_ruler.py          ← 113 cases (extraction / backtest / scope)
 │   ├── test_mcp_landing.py    ← 39 cases (payload parsing, the truncation guard, provenance and stitching attribution)
 │   ├── test_docs.py           ← 18 cases (documented numbers = real runs)
-│   ├── test_baseline_guard.py ← 57 cases (field-by-field re-runs + raw/evidence tracks + negative paths + packaging guards)
+│   ├── test_baseline_guard.py ← 58 cases (field-by-field re-runs + raw/evidence tracks + negative paths + packaging guards)
 │   ├── test_preflight.py      ← 3 cases (the pre-flight contract: MCP session, permission probe, model owned by the host, stop-and-report)
 │   ├── test_contest_verify.py ← 17 cases (simulation-contest cost reconciliation: missing evidence must not yield a verdict, a locked book is not a verified cost, the delivery date is never substituted, identity fields never leak)
 
@@ -82,7 +82,7 @@ python3 scripts/evaluate.py --landed-dir tests/fixtures/landed --start 20240101 
 # reads them (see references/contest_verification.md)
 python3 scripts/contest_verify.py --out baselines/contest_verify_$(date +%Y%m%d).json
 python3 scripts/compare_baseline.py                      # read-only: re-run vs baselines/ anchor
-python3 -m pytest tests/ -v                              # 247 cases (113 + 39 + 18 + 57 + 3 + 17, see the tests/ tree below)
+python3 -m pytest tests/ -v                              # 248 cases (113 + 39 + 18 + 58 + 3 + 17, see the tests/ tree below)
 ```
 
 Real bars never go through the script: MCP tools can only be called by an **agent**. The

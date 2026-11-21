@@ -72,3 +72,21 @@ python3.11 -m pytest tests/test_baseline_guard.py -k raw_payloads -q
 ```
 
 raw 守卫还会逐字节核对新建产物与本目录七份派生产物，因此证据目录不能脱离原载荷单独漂移。
+
+## 无原始载荷时的第三方验证：sha256 复取口径
+
+没有 raw 载荷的审核方也能自证「包内 CSV == 网关数据」：`checksums.json` 给出七份派生文件的
+SHA-256 与**精确到参数的复取配方**（4 次 `mcp__pandadata__call_pandadata` 调用，含 symbol /
+窗口 / fields）。流程：
+
+1. 在 QuantStudio 宿主按 `checksums.json.refetch_params` 逐条调用 MCP，把返回载荷**原样**写入
+   `tests/fixtures/raw/<lands_as>`；
+2. 跑 `checksums.json.rebuild_command` 重建派生产物；
+3. 对重建出的七份文件算 `shasum -a 256`，与 `checksums.json.files` 比对。
+
+一致 → 随包 CSV 与网关当前返回逐字节相同，派生链闭环。
+不一致 → 说明网关数据在 2026-11-21（取数日）之后被修订过；此时应报告差异而不是默采任何一侧，
+随包锚点仍然锚定 2026-11-21 取到的那一份数据。
+
+机器守卫：`tests/test_baseline_guard.py::test_checksums_match_the_shipped_evidence`
+（无条件执行）核对 `checksums.json` 与目录内实物一致，防止清单与文件漂移。

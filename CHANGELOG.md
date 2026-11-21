@@ -6,6 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [0.9.1] — 2026-11-21
+
+套件规模：164 → 248 条用例，累计新增 84 条（其中本版 1 条）。**non-breaking**：
+判定规则、成本、锚点数值与两份基线全部未动；本版只补「无 raw 载荷的第三方如何自证
+包内 CSV == 网关数据」的验证口径。
+
+### Added（补交口径闭环：sha256 复取验证）
+- `evidence/rb-i-2024H1/checksums.json`：七份派生文件的 SHA-256 清单 +
+  **精确到参数的 PandaData MCP 复取配方**（4 次 `mcp__pandadata__call_pandadata` 调用，
+  含 symbol / 窗口 / fields / 落盘文件名）+ 重建命令。第三方流程：按配方复取 → `mcp_landing.py --build`
+  重建 → 比对 sha256；一致即证明随包 CSV 与网关当前返回逐字节相同。
+- 不一致时的口径也写死：说明网关数据在 2026-11-21（取数日）后被修订，应报告差异、
+  不默采任何一侧；随包锚点锚定的是取数日那一份。
+- `tests/test_baseline_guard.py::test_checksums_match_the_shipped_evidence`（无条件执行，
+  不依赖 raw/网络/登录）：核对清单与目录实物一致、覆盖集合不多不少、复取配方的窗口合法、
+  provenance 引用的每份载荷都在配方内——防止清单与文件漂移后验证路径静默失效。
+- evidence README 新增「无原始载荷时的第三方验证」小节。
+
 ## [0.9.0] — 2026-11-21
 
 套件规模：164 → 247 条用例，累计新增 83 条（其中本版 4 条；此处沿用上版起点的

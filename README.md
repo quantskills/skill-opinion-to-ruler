@@ -55,7 +55,7 @@ skill-opinion-to-ruler/
 │   ├── test_ruler.py          ← 113 个用例（抽取 / 回测 / 范围）
 │   ├── test_mcp_landing.py    ← 39 个用例（落盘载荷解析、截断守卫、provenance 与拼接归属）
 │   ├── test_docs.py           ← 18 个用例（文档数字=实跑结果）
-│   ├── test_baseline_guard.py ← 57 个用例（重跑逐字段核对 baselines/ 锚点 + raw/evidence 双轨 + 负路径 + 打包守卫）
+│   ├── test_baseline_guard.py ← 58 个用例（重跑逐字段核对 baselines/ 锚点 + raw/evidence 双轨 + 负路径 + 打包守卫）
 │   ├── test_preflight.py      ← 3 个用例（前置检查契约：MCP 会话 / 权限探针 / 模型归宿主 / 不过就停并报告缺什么）
 │   ├── test_contest_verify.py ← 17 个用例（仿真大赛口径对账：缺证据必须不结论、锁死盘口不算成本已核验、交割日不许顶替、身份字段不外泄）
 
@@ -99,7 +99,7 @@ python3 scripts/compare_baseline.py
 python3 scripts/evaluate.py --fixture --check-baseline baselines/frozen_baseline.json
 
 # 6. 测试
-python3 -m pytest tests/ -v          # 247 个用例（113 + 39 + 18 + 57 + 3 + 17，见下方 tests/ 目录树）
+python3 -m pytest tests/ -v          # 248 个用例（113 + 39 + 18 + 58 + 3 + 17，见下方 tests/ 目录树）
 ```
 
 验收锚点是**随包发布的交付物**：`baselines/frozen_baseline.json`（冻结参照）与

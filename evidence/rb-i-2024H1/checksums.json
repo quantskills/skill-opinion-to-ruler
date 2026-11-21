@@ -1,0 +1,94 @@
+{
+  "_note": "SHA-256 of every derived file shipped in this directory. Re-fetch the four payloads via PandaData MCP (exact params below), rebuild with scripts/mcp_landing.py --build, and compare your outputs against these hashes: identical hashes prove the shipped CSVs equal what the gateway returns. A mismatch means gateway data was revised after 2026-11-21 (the fetch date) - report it, do not silently accept either side.",
+  "fetched_at": "2026-11-21",
+  "fetch_channel": "mcp__pandadata__call_pandadata (QuantStudio host, OAuth)",
+  "refetch_params": [
+    {
+      "method": "get_future_daily",
+      "params": {
+        "symbol": [
+          "I2405.DCE"
+        ],
+        "start_date": "20240102",
+        "end_date": "20240327",
+        "fields": [
+          "date",
+          "symbol",
+          "open",
+          "high",
+          "low",
+          "close",
+          "volume",
+          "underlying_symbol"
+        ]
+      },
+      "lands_as": "get_future_daily__I2405_20240102_20240327.json"
+    },
+    {
+      "method": "get_future_daily",
+      "params": {
+        "symbol": [
+          "I2409.DCE"
+        ],
+        "start_date": "20240328",
+        "end_date": "20240628",
+        "fields": [
+          "date",
+          "symbol",
+          "open",
+          "high",
+          "low",
+          "close",
+          "volume",
+          "underlying_symbol"
+        ]
+      },
+      "lands_as": "get_future_daily__I2409_20240328_20240628.json"
+    },
+    {
+      "method": "get_future_daily",
+      "params": {
+        "symbol": [
+          "RB2405.SHF",
+          "RB2410.SHF"
+        ],
+        "start_date": "20240102",
+        "end_date": "20240628",
+        "fields": [
+          "date",
+          "symbol",
+          "open",
+          "high",
+          "low",
+          "close",
+          "volume",
+          "underlying_symbol"
+        ]
+      },
+      "lands_as": "get_future_daily__RB_20240102_20240628.json"
+    },
+    {
+      "method": "get_future_dominant",
+      "params": {
+        "underlying_symbol": [
+          "I",
+          "RB"
+        ],
+        "start_date": "20240102",
+        "end_date": "20240628"
+      },
+      "lands_as": "get_future_dominant__I_RB_20240102_20240628.json"
+    }
+  ],
+  "rebuild_command": "python3 scripts/mcp_landing.py --build --raw-dir tests/fixtures/raw --out-dir <work>/real_landed --start 20240102 --end 20240628",
+  "algorithm": "sha256",
+  "files": {
+    "bars_I2405.DCE.csv": "362fbbc33870ada5597ed3a8035366250809af8f1156391e7b26b7ba4148d62a",
+    "bars_I2409.DCE.csv": "e96f074c05275a76a9e097312b8461cd9edc8529651b977747aa991b041c7194",
+    "bars_RB2405.SHF.csv": "c6e921280c334caaa197acaaad6d2cdfd567c651d07215e352f5cc8d32e16226",
+    "bars_RB2410.SHF.csv": "d187b3db6b19f5042bec541fbec9daa9473e3df6582451f00935e389eb7ebaf7",
+    "dominant_I.csv": "b32d5a1d3b2ab98c00f6d2178b37ff05413bcd19e8e807026b982e8b65c39ec9",
+    "dominant_RB.csv": "370d4f1ff31af6f5a80d8c9f2dd27588c9e87b6fca8f0a07697340e64cc8c31f",
+    "provenance.json": "b24cf92b0ca87db419a4a5bdce51a908f064fe57d660a7af6197ef1f51244c46"
+  }
+}
