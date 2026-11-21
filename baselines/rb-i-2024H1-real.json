@@ -129,7 +129,7 @@
     "all_complete": true,
     "landed_dir": "real_landed",
     "landed_dir_outside_skill": true,
-    "landed_dir_note": "the build directory sat outside the skill tree, so only its name is recorded: an absolute path here is not reproducible on another machine. The authoritative provenance is source_payloads (gateway request ids) plus the per-contract windows below.",
+    "landed_dir_note": "the build directory sat outside the skill tree, so only its name is recorded: an absolute path here is not reproducible on another machine. The authoritative provenance is source_payloads (source payload file names) plus the per-contract windows below.",
     "coverage_policy": "error"
   },
   "extraction": {

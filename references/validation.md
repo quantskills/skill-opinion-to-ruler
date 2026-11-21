@@ -17,7 +17,7 @@
 
 | 前提 | 实现 |
 |---|---|
-| 合法可用且有时间戳的历史观点 | 输入契约要求 `published_at`；回测缺它就拒跑 |
+| 合法可用且有时间戳的观点 | 输入契约要求 `published_at`；回测缺它就拒跑。随包 12 例的文本是 `opinions.json` 明确自述 synthetic 的合成夹具，真实的是 RB/I 行情；真实作者样本须由调用方另行提供 |
 | 对应行情 | `load_bars`，读本技能 `tests/fixtures/landed/` 里由 MCP 载荷构建的 CSV，或调用方自备 CSV（脚本不联网、不要凭证） |
 | 费用 | `config` 内的 `commission_bps` / `slippage_bps`，默认 3bp + 2bp 双边 |
 | 覆盖沉默/反转/错误观点 | 标注样本必须包含 `neutral`（观望）、**否定撤回**（判 `neutral`，不是反向）、以及事后被证明错误的观点 |
@@ -37,10 +37,11 @@
 下面这张盈亏分布表来自 **0.4.0 之前的取数通道**在 2024 年真实行情（RB/I，242 根日线）上的那次运行，
 照原样保留只为追溯历史，**不是当前结果**——该通道已在 0.4.0 移除，242 根日线这个规模也不可在
 当前链路复现。当前可复现的真实行情结果在 `baselines/rb-i-2024H1-real.json`（2024-01-02..06-28，
-RB/I 各 117 根拼接日线，n=12，edge +0.012154，CI 跨 0 → `inconclusive`），
-由 `tests/test_baseline_guard.py::test_real_anchor_reproduces_from_the_raw_payloads` 从载荷
-**重新落盘、重新评测、逐字段比对**。完整步骤见 `references/mcp-data.md` 第 1 节
-（agent 取数 → 原样落盘 → `--build` → 评测）与第 5 节（截断守卫）。
+RB/I 各 117 根拼接日线，n=12，edge +0.012154，CI 跨 0 → `inconclusive`）。
+`tests/test_baseline_guard.py::test_real_anchor_reproduces_from_shipped_evidence` 从随包
+`evidence/rb-i-2024H1/` 的派生行情、案例/规则/标签**无条件重跑并逐字段比对**；有原始载荷时，
+`test_real_anchor_reproduces_from_the_raw_payloads` 再复核 `raw -> landed` 派生关系。完整步骤见
+`references/mcp-data.md` 第 1 节（agent 取数 → 原样落盘 → `--build` → 评测）与第 5 节（截断守卫）。
 
 历史那次运行的 12 笔成交盈亏分布：
 

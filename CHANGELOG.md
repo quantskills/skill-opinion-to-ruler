@@ -6,6 +6,53 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [0.9.0] — 2026-11-21
+
+套件规模：164 → 247 条用例，累计新增 83 条（其中本版 4 条；此处沿用上版起点的
+累计口径，按 `pytest --collect-only` 实测）。本次为 **non-breaking**：抽取器、成本、判定阈值、
+两份锚点的交易指标与 PandaData MCP 取数通道均未改变；真实结论仍是 `inconclusive`。
+
+### 对应审核要求 1：补交原 12 例的行情只读入口、案例、规则与标签
+
+- 新增随包证据目录 `evidence/rb-i-2024H1/`：六份派生 CSV（I2405/I2409/RB2405/RB2410 日线与
+  I/RB 主力映射）、`provenance.json`、证据 README，以及 `cases_rules_labels.json`。
+- `cases_rules_labels.json` 按真实锚点 `backtest.trades[].rule_id` 选出 12 个案例，每组保留
+  `case`（id / published_at / 原文）、`rule`、`label` 与 `trade`。完整规则由同一观点夹具经
+  `build.run(..., apply_defaults=True)` 确定性重建；真实锚点的 `extraction` 段实际只存汇总、
+  准确率与 `config_hash`，并未存完整规则对象，证据说明没有伪称从锚点复制规则。
+- 原始载荷已按原窗口重新取回用于复核：20240102–20240628；I2405 切片到 20240327、I2409
+  从 20240328 起，RB 一次覆盖两个合约，主力映射一次覆盖 I/RB，共 4 份。原始 MCP 响应仍不入库。
+- **权限口径收窄并说清**：不发布的是原始响应；随包发布的是派生公开市场日线 OHLCV 与主力映射，
+  仅日期、开高低收量、合约代码等字段，不含专有响应字段、凭证、账号信息或账户衍生数据。
+  `tests/fixtures/raw/*`、一般 `tests/fixtures/landed/*` 与仿真大赛原始载荷继续被忽略。
+- 载荷清单统一为 4 份，删除 raw README 多出的 `RB_DOMINANT.SHF` 项。
+
+### 对应审核要求 2：独立复跑并按证据保留原结论
+
+- 新增**双轨守卫**：有 raw 载荷时，原 raw 守卫重建七份派生产物、逐字节核对随包 evidence，
+  再重跑真实锚点；无 raw 时它仍按原契约跳过。新增 evidence 守卫则只使用随包派生产物，
+  在干净克隆上**无条件执行**，不登录、不联网。
+- 两条路径都比较 **1526** 个字段（报告 1448 + 范围声明 78）。独立手工复跑得到
+  `1448 field(s) compared, 0 mismatched`、`verdict: CONSISTENT`；n=12、edge/CI 不变，
+  结论保持 `inconclusive`，没有为了补交而升级有效性。
+- 新增证据内容守卫：12 个 `rule_id` 的顺序与真实成交一一对应；案例与观点/标签夹具逐字段一致；
+  完整规则与当前抽取器确定性输出一致；证据 JSON 不得写机器绝对路径。
+- 既有打包守卫同步检查真实锚点、派生 CSV 和案例/规则/标签会被 `git add -A` 收进 index，
+  raw/landed 则不会，避免“本地能跑、克隆缺证据”。
+
+### 澄清与修正
+
+- **观点文本是合成的，行情是真实的。** 12 个观点来自 `tests/fixtures/opinions.json` 明确自述
+  synthetic 的手写夹具，不是历史作者原话；真实的是 2024H1 RB/I 行情。真实锚点与合成锚点的
+  `extraction` 对象相同，因为共用观点、标签与抽取配置。12 笔交易只检验规则化与评价流程，
+  不检验真实作者的预测能力。
+- 真实回测数据量改为 **234 行实际用于回测的合约日线 `bars_used`**（56+61+58+59）+
+  234 行主力映射。随包合约 CSV 文件本身共 320 行，包含非主力日；文件行数与回测用量不再混写。
+- 真实锚点 `landed_dir_note` 与其生成器同步改为“来源载荷文件名”，不再误称保存了 gateway
+  request id；改动后 raw/evidence 两条逐字段守卫均通过。
+- `skill.json` 升至 0.9.0，声明真实锚点、证据目录、案例/规则/标签及无条件复跑入口；
+  中英 README、SKILL、INSTALL、MCP 数据契约与适配器同步更新。
+
 ## [0.8.0] — 2026-11-19
 
 套件规模：164 → 243 条用例，累计新增 79 条（0.8.0 补 `tests/test_contest_verify.py` 17 例；
@@ -300,7 +347,8 @@ PandaData MCP 落盘）。
   `test_baseline_guard.py` 39）。
 
 - 真实行情重跑并固化第二份锚点 `baselines/rb-i-2024H1-real.json`（2024-01-02..06-28，品种 I+RB，
-  234 行主力映射 + 320 行具体合约日线，全部经 `mcp_landing.py --build` 与完整性校验落盘）：
+  234 行主力映射 + 234 行实际用于回测的具体合约日线 `bars_used`（对应合约 CSV 文件共 320 行，
+  含非主力日），全部经 `mcp_landing.py --build` 与完整性校验落盘）：
   **n=12 达标但 CI [-0.0045, +0.0285] 跨 0 → `verdict` 仍为 `inconclusive`**。
   由此确立两条口径：`MIN_TRADES` 是必要不充分条件；合成锚点 edge -0.0185 与真实 +0.0122 **符号相反**，
   即合成数据不仅样本量不足、方向也可能是错的——`SKILL.md` 的「价值验收」已按此改写，V 仍为 0.60。

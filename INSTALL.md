@@ -34,10 +34,12 @@ python3 scripts/evaluate.py --landed-dir tests/fixtures/landed --start 20240101 
 未登录时在 **Settings → PandaData → Login** 处理；不要在脚本里配账号，也不要向用户索要密码。
 契约与失败处理见 `references/mcp-data.md`。
 
-**从 git 克隆得到的是完整交付物**：验收锚点 `baselines/frozen_baseline.json` 与
-`baselines/scope_declaration.json` 随包入库，`tests/fixtures/bars_{RB,I}.csv` 与
-`tests/fixtures/labels*.json` 也在包里，所以克隆后立刻可以跑
+**从 git 克隆得到的是完整交付物**：验收锚点 `baselines/frozen_baseline.json`、
+`baselines/rb-i-2024H1-real.json` 与 `baselines/scope_declaration.json` 随包入库，
+`tests/fixtures/bars_{RB,I}.csv` 与 `tests/fixtures/labels*.json` 也在包里，所以克隆后立刻可以跑
 `python3 scripts/compare_baseline.py` 逐字段复核冻结基线（见「验证安装」第 4 步）。
+`evidence/rb-i-2024H1/` 同时提供原 12 例的派生真实行情、案例/规则/标签与无条件复跑入口；
+观点文本为合成夹具，真实的是行情，原始 MCP 响应仍不进包。
 `output/` 不在包里，那是运行期重新生成的落点，不是缺失。
 
 ---
@@ -134,12 +136,19 @@ python3 -m pytest tests/ -v
 旧值与新值各是多少；**不要为了让它变绿去改 `baselines/` 里的数字**，先查实现为什么变了。
 若报 `frozen reference not found`，说明拿到的是不完整的包（锚点没入库）。
 
-用真实行情验收（可选，需先由 agent 按上面的 ①② 落盘载荷）：
+原真实 12 例可直接从随包派生证据验收（无需原始载荷）：
+
+```bash
+python3.11 -m pytest tests/test_baseline_guard.py -k shipped_evidence -q
+```
+
+如持有原始载荷，还可选做 `raw -> landed -> evaluate` 全链路复核（先由 agent 按上面的 ①② 落盘）：
 
 ```bash
 python3 scripts/mcp_landing.py --verify    # 只读诊断：载荷齐不齐、有没有被截断
 python3 scripts/mcp_landing.py --build     # 落盘载荷 → landed CSV + provenance.json
 python3 scripts/evaluate.py --landed-dir tests/fixtures/landed --start 20240101 --end 20241231
+OPINION_TO_RULER_RAW_DIR=tests/fixtures/raw python3.11 -m pytest tests/test_baseline_guard.py -k raw_payloads -q
 ```
 
 ## 常见问题

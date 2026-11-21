@@ -50,6 +50,13 @@ sys.path.insert(0, SCRIPTS)
 import compare_baseline  # noqa: E402
 
 BASELINE_DIR = os.path.join(ROOT, "baselines")
+EVIDENCE_DIR = os.path.join(ROOT, "evidence", "rb-i-2024H1")
+EVIDENCE_LANDED_FILES = (
+    "bars_I2405.DCE.csv", "bars_I2409.DCE.csv",
+    "bars_RB2405.SHF.csv", "bars_RB2410.SHF.csv",
+    "dominant_I.csv", "dominant_RB.csv", "provenance.json",
+)
+EVIDENCE_CASES = os.path.join(EVIDENCE_DIR, "cases_rules_labels.json")
 FROZEN_REPORT = os.path.join(BASELINE_DIR, "frozen_baseline.json")
 FROZEN_SCOPE = os.path.join(BASELINE_DIR, "scope_declaration.json")
 GITIGNORE = os.path.join(ROOT, ".gitignore")
@@ -597,11 +604,19 @@ def _is_ignored(relative_path, rules):
 
 def test_the_anchor_ships_and_is_not_git_ignored():
     rules = _parse_gitignore(open(GITIGNORE, encoding="utf-8").read())
-    for shipped in ("baselines/frozen_baseline.json", "baselines/scope_declaration.json"):
+    for shipped in ("baselines/frozen_baseline.json", "baselines/scope_declaration.json",
+                    "baselines/rb-i-2024H1-real.json"):
         assert os.path.isfile(os.path.join(ROOT, shipped)), (
             "acceptance anchor missing from the package: %s" % shipped)
         assert not _is_ignored(shipped, rules), (
             "%s is git-ignored, so installing from git yields no acceptance anchor"
+            % shipped)
+    for name in EVIDENCE_LANDED_FILES + ("cases_rules_labels.json", "README.md"):
+        shipped = os.path.join("evidence", "rb-i-2024H1", name)
+        assert os.path.isfile(os.path.join(ROOT, shipped)), (
+            "independent-replay evidence missing: %s" % shipped)
+        assert not _is_ignored(shipped, rules), (
+            "%s must ship so the real anchor can be replayed without raw payloads"
             % shipped)
     # the deterministic fixtures must ship too, or the guard has nothing to run
     for fixture in ("tests/fixtures/bars_RB.csv", "tests/fixtures/bars_I.csv",
@@ -644,6 +659,8 @@ def test_git_itself_agrees_on_what_ships():
                  "output/frozen_baseline.json", "output/scope_declaration.json",
                  "tests/fixtures/bars_RB.csv", "tests/fixtures/raw/x.json",
                  "tests/fixtures/raw/README.md", "tests/fixtures/landed/provenance.json",
+                 "evidence/rb-i-2024H1/bars_I2405.DCE.csv",
+                 "evidence/rb-i-2024H1/cases_rules_labels.json",
                  "scripts/evaluate.py", "SKILL.md"]
         for path in paths:
             full = os.path.join(work, path)
@@ -659,6 +676,9 @@ def test_git_itself_agrees_on_what_ships():
         assert "baselines/scope_declaration.json" in tracked
         assert "tests/fixtures/bars_RB.csv" in tracked, "the guard needs its fixtures"
         assert "tests/fixtures/raw/README.md" in tracked
+        assert "evidence/rb-i-2024H1/bars_I2405.DCE.csv" in tracked, (
+            "the derived real-market evidence must ship for independent replay")
+        assert "evidence/rb-i-2024H1/cases_rules_labels.json" in tracked
         for must_not in ("output/frozen_baseline.json", "output/scope_declaration.json",
                          "tests/fixtures/raw/x.json",
                          "tests/fixtures/landed/provenance.json"):
@@ -687,6 +707,7 @@ def test_git_itself_agrees_on_what_ships():
 DOC_FILES = ("README.md", "README.en.md", "SKILL.md",
              os.path.join("references", "validation.md"),
              os.path.join("references", "api_guide.md"),
+             os.path.join("evidence", "rb-i-2024H1", "README.md"),
              os.path.join("agents", "portable-loader.md"))
 
 
@@ -735,6 +756,13 @@ def test_skill_json_declares_only_paths_that_are_true():
             "%s is declared as a regenerated product but would ship in the package"
             % declared)
     assert outputs["regenerated_products_are_gitignored"] is True
+    for key in ("real_market_acceptance_anchor", "real_market_cases_rules_labels"):
+        declared = outputs[key]
+        assert os.path.isfile(os.path.join(ROOT, declared)), declared
+        assert not _is_ignored(declared, rules), declared
+    evidence_dir = outputs["real_market_evidence"]
+    assert os.path.isdir(os.path.join(ROOT, evidence_dir)), evidence_dir
+    assert outputs["real_market_evidence_is_gitignored"] is False
     # the commands it advertises must exist and be the documented entrypoints
     for key, command in outputs.items():
         if not isinstance(command, str) or "scripts/" not in command:
@@ -786,7 +814,9 @@ def test_no_document_hardcodes_an_install_path():
         text = _doc(relative)
         for marker in banned:
             assert marker not in text, "%s hardcodes an install path" % relative
-    for anchor in _shipped_anchor_paths():
+    evidence_json = [os.path.join(EVIDENCE_DIR, name)
+                     for name in ("provenance.json", "cases_rules_labels.json")]
+    for anchor in _shipped_anchor_paths() + evidence_json:
         text = open(anchor, encoding="utf-8").read()
         for marker in banned:
             assert marker not in text, (
@@ -863,10 +893,10 @@ def test_no_shipped_anchor_records_a_machine_path(anchor):
 def test_real_anchor_is_self_consistent():
     """The real anchor's verdict must follow from its own edge, n and threshold.
 
-    Without the licensed bars a reader cannot recompute the trades, but they can
-    always check the anchor does not contradict itself: ``verdict`` must be what
-    ``decide_verdict`` returns for the edge and trade count it publishes, and the
-    trade list must match the reported count.
+    Even before running the shipped-evidence replay, a reader can check that the
+    anchor does not contradict itself: ``verdict`` must be what ``decide_verdict``
+    returns for the edge and trade count it publishes, and the trade list must
+    match the reported count.
     """
     import backtest
 
@@ -937,6 +967,10 @@ def test_real_anchor_reproduces_from_the_raw_payloads():
              "--start", "20240102", "--end", "20240628"],
             capture_output=True, text=True, cwd=ROOT)
         assert built.returncode == 0, built.stdout + built.stderr
+        for name in EVIDENCE_LANDED_FILES:
+            assert _bytes_of(os.path.join(landed, name)) == _bytes_of(
+                os.path.join(EVIDENCE_DIR, name)), (
+                "shipped derived evidence differs from a fresh raw-payload build: %s" % name)
 
         run = subprocess.run(
             [PYTHON, os.path.join(SCRIPTS, "evaluate.py"), "--landed-dir", landed,
@@ -958,6 +992,86 @@ def test_real_anchor_reproduces_from_the_raw_payloads():
             % result["compared"])
     finally:
         shutil.rmtree(work, ignore_errors=True)
+
+
+def test_real_anchor_reproduces_from_shipped_evidence():
+    """Replay the real anchor with no raw payloads, login or network access.
+
+    The committed derived CSV/provenance set is copied to the portable directory
+    name recorded by the anchor. Everything afterwards is the normal evaluation
+    and field-by-field comparator, so a clean clone always executes this guard.
+    """
+    work = tempfile.mkdtemp(prefix="evidence-anchor-")
+    landed = os.path.join(work, "real_landed")
+    report = os.path.join(work, "report.json")
+    scope = os.path.join(work, "scope.json")
+    try:
+        os.makedirs(landed)
+        for name in EVIDENCE_LANDED_FILES:
+            source = os.path.join(EVIDENCE_DIR, name)
+            assert os.path.isfile(source), "missing shipped evidence: %s" % name
+            shutil.copyfile(source, os.path.join(landed, name))
+
+        run = subprocess.run(
+            [PYTHON, os.path.join(SCRIPTS, "evaluate.py"), "--landed-dir", landed,
+             "--start", "20240102", "--end", "20240628",
+             "--baseline-output", report, "--scope-output", scope],
+            capture_output=True, text=True, cwd=ROOT)
+        assert run.returncode == 0, run.stdout + run.stderr
+
+        generated = json.load(open(report, encoding="utf-8"))
+        result = compare_baseline.verify(generated, frozen_path=REAL_REPORT,
+                                         scope_path=scope)
+        assert result["diff_count"] == 0, (
+            "the real anchor does not reproduce from shipped evidence: %s"
+            % [d["field"] for d in _all_diffs(result)][:12])
+        assert result["compared"] == 1526
+        assert generated["backtest"]["verdict"] == "inconclusive"
+    finally:
+        shutil.rmtree(work, ignore_errors=True)
+
+
+def test_shipped_cases_rules_labels_match_the_twelve_real_trades():
+    """The reviewer-facing cases/rules/labels must be complete and reproducible."""
+    evidence = _read_json(EVIDENCE_CASES)
+    real = _read_json(REAL_REPORT)
+    fixture = _read_json(FROZEN_REPORT)
+    trades = {t["rule_id"]: t for t in real["backtest"]["trades"]}
+    assert evidence["market_data"]["status"] == "real"
+    assert evidence["opinion_text"]["status"] == "synthetic"
+    assert len(evidence["cases"]) == len(trades) == 12
+    assert [c["rule"]["rule_id"] for c in evidence["cases"]] == list(trades)
+    assert real["extraction"] == fixture["extraction"], (
+        "both anchors intentionally use the same synthetic opinions and labels")
+
+    import build
+
+    opinions = _read_json(os.path.join(ROOT, "tests", "fixtures", "opinions.json"))
+    labels = _read_json(os.path.join(ROOT, "tests", "fixtures", "labels.json"))
+    extracted = build.run(opinions, {"apply_defaults": True})
+    assert extracted["config_hash"] == real["extraction"]["config_hash"]
+    assert evidence["extraction"]["config_hash"] == extracted["config_hash"]
+    rules = {r["rule_id"]: r for d in extracted["documents"] for r in d["rules"]}
+    documents = {d["id"]: d for d in opinions["documents"]}
+    samples = {s["id"]: s for s in labels["samples"]}
+    for item in evidence["cases"]:
+        rule_id = item["rule"]["rule_id"]
+        doc_id = rule_id.rsplit("-r", 1)[0]
+        opinion = documents[doc_id]
+        assert item["case"] == {"id": opinion["id"],
+                                "published_at": opinion["published_at"],
+                                "text": opinion["text"]}
+        assert item["rule"] == rules[rule_id]
+        assert item["label"] == samples[doc_id]["labels"]
+        assert item["trade"] == trades[rule_id]
+        assert samples[doc_id]["text"] == opinion["text"]
+        assert samples[doc_id]["published_at"] == opinion["published_at"]
+
+    for path in (EVIDENCE_CASES, os.path.join(EVIDENCE_DIR, "provenance.json")):
+        offenders = [(field, value) for field, value in _iter_strings(_read_json(path))
+                     if value.startswith("/") or any(m in value for m in
+                                                    _MACHINE_PATH_MARKERS)]
+        assert not offenders, "evidence records a machine path: %s" % offenders[:6]
 
 
 # ---------------------------------------------------------------------------
@@ -1146,3 +1260,53 @@ def test_portable_path_does_not_re_resolve_an_already_relative_name():
     assert data_loader._portable_files([name])[0] == name
     assert data_loader._portable_files([]) == []
     assert data_loader._portable_files([None, 7]) == []
+
+
+def test_ignore_machine_paths_skips_only_the_landing_dir_name(tmp_path):
+    """A renamed ``--out-dir`` must not look like a drifted result.
+
+    ``data.landed_dir`` records the basename of whatever directory the bars were
+    landed in, so a reviewer who follows the README but writes ``--out-dir
+    my_landed`` gets one MISMATCH and exit code 1 on an otherwise identical run.
+    The strict default is unchanged; the flag exists so that reviewer can still
+    show every acceptance number matches, and the skipped leaf is named in the
+    result rather than silently dropped.
+    """
+    import compare_baseline
+
+    generated = {"data": {"landed_dir": "renamed_landed"},
+                 "backtest": {"mean_net": -0.008188}}
+    frozen = {"data": {"landed_dir": "real_landed"},
+              "backtest": {"mean_net": -0.008188}}
+
+    diffs, fields = compare_baseline.compare(generated, frozen)
+    assert [d["field"] for d in diffs] == ["data.landed_dir"]
+    assert "data.landed_dir" in fields
+
+    anchor = tmp_path / "frozen.json"
+    anchor.write_text(json.dumps(frozen), encoding="utf-8")
+    result = compare_baseline.verify(
+        generated, frozen_path=str(anchor), scope_path=None,
+        ignore_machine_paths=True,
+    )
+    assert result["ok"] is True
+    assert result["diff_count"] == 0
+    assert result["ignored_fields"] == ["data.landed_dir"]
+    assert result["compared"] == 1  # only backtest.mean_net is still judged
+
+
+def test_ignoring_machine_paths_does_not_hide_a_real_regression(tmp_path):
+    """The flag must not become a blanket 'ignore data quality' switch."""
+    import compare_baseline
+
+    anchor = tmp_path / "frozen.json"
+    anchor.write_text(json.dumps(
+        {"data": {"landed_dir": "real_landed"},
+         "backtest": {"mean_net": -0.008188}}), encoding="utf-8")
+    result = compare_baseline.verify(
+        {"data": {"landed_dir": "renamed_landed"},
+         "backtest": {"mean_net": -0.009999}},
+        frozen_path=str(anchor), scope_path=None, ignore_machine_paths=True,
+    )
+    assert result["ok"] is False
+    assert [d["field"] for d in result["sections"][0]["diffs"]] == ["backtest.mean_net"]

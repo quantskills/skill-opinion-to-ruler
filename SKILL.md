@@ -149,6 +149,35 @@ agent 调 `mcp__pandadata__call_pandadata` → 把返回载荷**原样**写入
 （截断守卫在这一层）→ `evaluate.py --landed-dir` 只读构建出来的本地文件（契约见
 `references/mcp-data.md`）。
 
+### 原 12 例的随包证据与独立复跑
+
+`evidence/rb-i-2024H1/` 是审核要求的只读证据入口，随包发布六份派生 CSV、`provenance.json` 和
+`cases_rules_labels.json`。后者按真实锚点的 12 个 `backtest.trades[].rule_id` 保留案例
+（`id` / `published_at` / 原文）、完整规则、人工标签与成交记录。完整规则由同一观点夹具经
+`build.run(..., apply_defaults=True)` 确定性重建；真实锚点的 `extraction` 段只保存汇总、准确率与
+`config_hash`，并不保存完整规则对象。
+
+**观点文本是合成的，行情是真实的。** 真实的是 2024H1 的 RB/I 日线与主力映射；观点原文来自
+`tests/fixtures/opinions.json` 这份明确自述 synthetic 的手写夹具，不是历史作者原话。真实锚点与
+`baselines/frozen_baseline.json` 的 `extraction` 对象相同，原因正是二者共用观点夹具、标注集和
+抽取配置。12 笔交易的有效性结论只依赖抽取规则、真实行情及冻结的基线/成本/门槛，不依赖观点
+是否由真实作者发表；结论保持 `inconclusive`，检验的是规则化与评价流程，不是某位作者的预测能力。
+
+权限边界也要说准：**原始 MCP 响应不进包，派生的公开市场日线 OHLCV 与主力映射 CSV 随包发布**。
+派生证据只有日期、开高低收量、合约代码等字段，不含专有响应字段、凭证或账号信息。
+`tests/fixtures/raw/*`、一般运行产生的 `tests/fixtures/landed/*` 与仿真大赛原始载荷仍全部忽略。
+
+干净克隆无需 raw 载荷即可无条件复跑真实锚点：
+
+```bash
+python3.11 -m pytest tests/test_baseline_guard.py -k shipped_evidence -q
+```
+
+另有 raw 双轨：有原始载荷时 `test_real_anchor_reproduces_from_the_raw_payloads` 会从 raw 重建，
+逐字节核对 evidence 后再复跑；没有时仅该 raw 用例跳过，evidence 用例不跳过。两条路径都比较
+1526 个字段（报告 1448 + 范围声明 78），结论应继续是 `inconclusive`。手工步骤见
+`evidence/rb-i-2024H1/README.md`。
+
 ```python
 import sys; sys.path.insert(0, "scripts")
 from build import run
@@ -202,6 +231,8 @@ print(bt["verdict"], bt["edge"])
 - 回测必须有冻结基线、成本假设、配对比较
 - 冻结基线必须**随包发布**（`baselines/`，不是 `.gitignore` 里的运行期目录），并且有一条会真失败的
   守卫把重跑结果与它逐字段比对（`tests/test_baseline_guard.py`）
+- 原真实 12 例必须同时随包提供派生行情、案例、规则与标签；干净克隆上的 evidence 守卫不得跳过，
+  且必须保留原 `inconclusive` 结论
 - `verdict` 为 `negative` 或 `inconclusive` 同样算合格交付
 - `tests/` 全部通过
 
@@ -213,7 +244,7 @@ print(bt["verdict"], bt["edge"])
 | 规约之问 | 当前回答 | 依据 |
 |---|---|---|
 | 相对冻结基线改变了什么 | 重跑与锚点逐字段一致；不一致时 `evaluate.py --check-baseline` 会点名变化的具体路径并非 0 退出 | `tests/test_baseline_guard.py` |
-| 作用多大 | **仍不可判定，但已在真实行情上判定**。合成锚点：n=10 < `MIN_TRADES`=12，edge **-0.018527**，CI [-0.028301, -0.00856]。真实行情重跑（`baselines/rb-i-2024H1-real.json`，2024-01-02..06-28，品种 I+RB，234 行主力映射 + 320 行具体合约日线，`scope honoured` 无降级）：n=**12** 达标，edge **+0.012154**，CI [-0.004511, +0.028479] **跨 0** → `verdict=inconclusive` | 两份锚点 `backtest.edge` |
+| 作用多大 | **仍不可判定，但已在真实行情上判定**。合成锚点：n=10 < `MIN_TRADES`=12，edge **-0.018527**，CI [-0.028301, -0.00856]。真实行情重跑（`baselines/rb-i-2024H1-real.json`，2024-01-02..06-28，品种 I+RB，234 行主力映射 + 234 行实际用于回测的具体合约日线 `bars_used`，`scope honoured` 无降级）：n=**12** 达标，edge **+0.012154**，CI [-0.004511, +0.028479] **跨 0** → `verdict=inconclusive` | 两份锚点 `backtest.edge` |
 | 适用边界 | 期货模拟撮合 / 自带撮合器的竞赛口径，不含实盘；真实重跑仅覆盖 2024H1 与 I、RB 两品种；4 条失效情形见 `baselines/scope_declaration.json` 与「已知局限」 | 同上 |
 | 价值验收结论 | **机制已在真实行情上跑通、价值仍未验收**（V=0.60） | — |
 

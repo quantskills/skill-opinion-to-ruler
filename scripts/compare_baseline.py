@@ -209,7 +209,8 @@ def _load_anchor(path: str) -> Any:
 def verify(generated: Dict[str, Any], *,
            frozen_path: str = FROZEN_REPORT,
            scope_path: Optional[str] = FROZEN_SCOPE,
-           include_fields: bool = False) -> Dict[str, Any]:
+           include_fields: bool = False,
+           ignore_machine_paths: bool = False) -> Dict[str, Any]:
     """Judge a freshly produced report against the committed references.
 
     Read-only: neither file is opened for writing, and nothing is created. The
@@ -220,7 +221,20 @@ def verify(generated: Dict[str, Any], *,
     ``include_fields`` also returns the paths that were judged, so a test can
     prove the comparison still covers the acceptance numbers instead of trusting
     a count that a narrowed walk would happily keep reporting as "all good".
+
+    ``ignore_machine_paths`` drops ``data.landed_dir`` from the judged set. That
+    field records the *basename* of the directory a run landed its bars in
+    (``scripts/data_loader.py::portable_dir``), so it changes with a rename that
+    has no economic meaning: a reviewer who follows the README but writes
+    ``--out-dir my_landed`` instead of ``real_landed`` gets one MISMATCH and exit
+    code 1 on an otherwise identical result. Comparing it stays the default
+    (strict); this flag exists so a reviewer can still demonstrate that every
+    acceptance number matches after such a rename, without editing the anchor.
+    It is deliberately narrow: only that one leaf, and the reported diff count
+    plus the returned ``ignored_fields`` make the substitution visible.
     """
+    ignored = frozenset({"data.landed_dir"}) if ignore_machine_paths else frozenset()
+
     sections: List[Dict[str, Any]] = []
 
     frozen = _load_anchor(frozen_path)
@@ -228,6 +242,8 @@ def verify(generated: Dict[str, Any], *,
         raise AnchorUnavailable("frozen reference is not a JSON object: %s"
                                 % _display(frozen_path))
     diffs, fields = compare(generated, frozen)
+    fields = [f for f in fields if f not in ignored]
+    diffs = [d for d in diffs if d["field"] not in ignored]
     sections.append(_section(frozen_path, diffs, fields, include_fields))
 
     if scope_path:
@@ -246,7 +262,8 @@ def verify(generated: Dict[str, Any], *,
     diff_count = sum(len(s["diffs"]) for s in sections)
     return {"ok": diff_count == 0, "sections": sections, "diff_count": diff_count,
             "compared": sum(s["compared"] for s in sections),
-            "tolerance": FLOAT_TOL, "volatile_fields": list(VOLATILE_FIELDS)}
+            "tolerance": FLOAT_TOL, "volatile_fields": list(VOLATILE_FIELDS),
+            "ignored_fields": sorted(ignored)}
 
 
 def _section(path: str, diffs: List[Dict[str, Any]], fields: List[str],
@@ -321,6 +338,10 @@ def main(argv: Optional[List[str]] = None) -> int:
                              "block; pass an empty value to skip it (default: %(default)s)")
     parser.add_argument("--json", action="store_true",
                         help="emit the structured result as JSON instead of lines")
+    parser.add_argument("--ignore-machine-paths", action="store_true",
+                        help="skip data.landed_dir when judging, for a run that "
+                             "landed its bars under a different directory name; "
+                             "the skipped field is reported in ignored_fields")
     args = parser.parse_args(argv)
 
     frozen_path = os.path.abspath(os.path.expanduser(args.frozen))
@@ -353,7 +374,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         return EXIT_USAGE
 
     try:
-        result = verify(generated, frozen_path=frozen_path, scope_path=scope_path)
+        result = verify(generated, frozen_path=frozen_path, scope_path=scope_path,
+                        ignore_machine_paths=args.ignore_machine_paths)
     except AnchorUnavailable as exc:
         print("[baseline] error: %s" % exc, file=sys.stderr)
         return EXIT_USAGE

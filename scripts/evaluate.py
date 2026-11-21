@@ -349,8 +349,8 @@ def main(argv=None) -> int:
             data["landed_dir_note"] = (
                 "the build directory sat outside the skill tree, so only its name is "
                 "recorded: an absolute path here is not reproducible on another "
-                "machine. The authoritative provenance is source_payloads (gateway "
-                "request ids) plus the per-contract windows below.")
+                "machine. The authoritative provenance is source_payloads (source "
+                "payload file names) plus the per-contract windows below.")
         data["coverage_policy"] = args.coverage
     if data["partial_symbols"]:
         print("[warn] PARTIAL data (built from truncated MCP payloads) for: %s — these numbers "

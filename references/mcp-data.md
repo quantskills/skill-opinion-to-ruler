@@ -68,8 +68,14 @@ JSON 通道**不带这些字段**，所以"缺字段"不是截断信号，本技
 | `tests/fixtures/landed/provenance.json` | — | 每个文件来自哪些载荷、请求区间、是否 partial |
 
 列结构与仓库顶层的合成 `tests/fixtures/bars_RB.csv` 完全一致，同一套
-`load_csv` / `--fixture` / 回测代码不用改就能读真实数据。真实数据写在 `landed/` 子目录，
+`load_csv` / `--fixture` / 回测代码不用改就能读真实数据。一般运行产生的真实数据写在 `landed/` 子目录，
 是为了**不覆盖**顶层合成样例——两条路必须能分辨。
+
+**入库边界**：原始 MCP 响应与一般 `landed/` 运行产物都不入库；唯一随包发布的是
+`evidence/rb-i-2024H1/` 这组审核证据，包括派生公开市场日线 OHLCV、主力映射、provenance 与
+12 组案例/规则/标签。派生 CSV 只有日期、开高低收量、合约代码，不含原始响应的专有字段、凭证或
+账号信息。`provenance.json` 记录来源文件名而不是 request id。观点文本则是
+`tests/fixtures/opinions.json` 明确自述 synthetic 的合成夹具；真实的只有行情。
 
 `scripts/mcp_landing.py` 命令行：
 
@@ -176,12 +182,19 @@ JSON 通道**不带这些字段**，所以"缺字段"不是截断信号，本技
 就全部对不上，而这些报告本来就是要给别人复现的。重跑真实锚点时把落点目录命名为 `real_landed`，
 记录下来的名称才对得上 `baselines/rb-i-2024H1-real.json`。
 
-复现守卫（授权载荷不随包发布，缺目录时该用例**跳过**而不是假装通过）：
+复现是双轨的。**随包 evidence 路径无条件执行**，从 `evidence/rb-i-2024H1/` 的派生产物重跑，
+不需要原始载荷；raw 路径有载荷时还会重新构建、逐字节核对 evidence 后再复跑，缺目录时仅 raw
+用例跳过，不假装通过：
 
 ```bash
-OPINION_TO_RULER_RAW_DIR=/path/to/raw python3.11 -m pytest tests/test_baseline_guard.py -k reproduces
+python3.11 -m pytest tests/test_baseline_guard.py -k shipped_evidence -q
+OPINION_TO_RULER_RAW_DIR=/path/to/raw python3.11 -m pytest tests/test_baseline_guard.py -k raw_payloads -q
 # 或直接把载荷放在 tests/fixtures/raw/（.gitignore 已排除，README.md 说明约定）
 ```
+
+手工复跑命令与四份载荷清单见 `evidence/rb-i-2024H1/README.md`。两条路径都比较 1526 个字段，
+结论保持 `inconclusive`；真实锚点与合成锚点的 `extraction` 对象相同，因为共用合成观点夹具、
+标签与抽取配置，这不代表观点来自真实作者。
 
 手工放进 `landed/` 的
 `bars_*.csv`（没有 `provenance.json`）也能读，但来源不可核验，报告里带

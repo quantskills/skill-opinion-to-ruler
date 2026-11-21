@@ -1,12 +1,12 @@
 {
   "name": "skill-opinion-to-ruler",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "entrypoint": "SKILL.md",
   "runtime": "python>=3.8",
   "license": "GPL-3.0-only",
   "type": "alpha",
   "data_source": "PandaData MCP on the QuantStudio host (landed in this skill's own fixtures) or caller-provided bars/CSV",
-  "data_source_note": "脚本不联网、不需要凭证：MCP 工具只能由 agent 调用，所以链路是 agent 调 mcp__pandadata__call_pandadata → 把返回载荷原样写入本技能的 tests/fixtures/raw/<method>__<label>.json → python3 scripts/mcp_landing.py --build 转成本技能既有格式 tests/fixtures/landed/bars_<SYMBOL>.csv 与 dominant_<PRODUCT>.csv（并写 provenance.json）。构建时强制校验截断判据（parquet 通道的 truncated / row_count<total_rows），不完整即结构化报错并非 0 退出；--allow-partial 放行时在产物里留下 partial 标记，评测报告据此告警。本技能不引用任何其他技能的脚本或路径。详见 references/mcp-data.md。",
+  "data_source_note": "脚本不联网、不需要凭证：MCP 工具只能由 agent 调用，所以链路是 agent 调 mcp__pandadata__call_pandadata → 把返回载荷原样写入本技能的 tests/fixtures/raw/<method>__<label>.json → python3 scripts/mcp_landing.py --build 转成本技能既有格式 tests/fixtures/landed/bars_<SYMBOL>.csv 与 dominant_<PRODUCT>.csv（并写 provenance.json）。构建时强制校验截断判据（parquet 通道的 truncated / row_count<total_rows），不完整即结构化报错并非 0 退出；--allow-partial 放行时在产物里留下 partial 标记，评测报告据此告警。本技能不引用任何其他技能的脚本或路径。原 2024H1 RB/I 试验的派生公开日线、主力映射与案例/规则/标签在 evidence/rb-i-2024H1/ 随包发布，原始响应仍不入库。详见 references/mcp-data.md。",
   "entry_script": "scripts/build.py",
   "source_task": "jobs/skill-opinion-to-ruler.txt",
   "dependencies": [],
@@ -33,8 +33,13 @@
     "regenerated_report": "output/frozen_baseline.json",
     "regenerated_scope": "output/scope_declaration.json",
     "regenerated_products_are_gitignored": true,
+    "real_market_acceptance_anchor": "baselines/rb-i-2024H1-real.json",
+    "real_market_evidence": "evidence/rb-i-2024H1",
+    "real_market_cases_rules_labels": "evidence/rb-i-2024H1/cases_rules_labels.json",
+    "real_market_evidence_is_gitignored": false,
+    "real_market_evidence_guard": "python3.11 -m pytest tests/test_baseline_guard.py -k shipped_evidence -q",
     "anchor_check": "python3 scripts/compare_baseline.py",
     "anchor_check_within_run": "python3 scripts/evaluate.py --fixture --check-baseline baselines/frozen_baseline.json",
-    "note": "验收锚点随包发布：baselines/ 是冻结参照（0.5.0 之前它住在 .gitignore 排除的 output/ 里，从 git 安装的人根本拿不到）。output/ 只是每次运行重新生成的落点，不是权威。守卫在 tests/test_baseline_guard.py：从确定性夹具重跑一遍，逐字段比对 baselines/frozen_baseline.json（浮点容差 5e-7，仅 generated_at 豁免），不一致即结构化报错并非 0 退出。"
+    "note": "验收锚点随包发布：baselines/ 是冻结参照（0.5.0 之前它住在 .gitignore 排除的 output/ 里，从 git 安装的人根本拿不到）。output/ 只是每次运行重新生成的落点，不是权威。真实锚点 baselines/rb-i-2024H1-real.json 由 evidence/rb-i-2024H1/ 的派生真实日线、主力映射与 12 组案例/规则/标签支撑；原始 MCP 响应不入库。tests/test_baseline_guard.py 双轨复跑：raw 载荷有则从 raw 重建并逐字节核对 evidence，无则跳过；evidence 路径无条件重跑并比较 1526 个字段。合成夹具锚点同样逐字段比对（浮点容差 5e-7，仅 generated_at 豁免），不一致即结构化报错并非 0 退出。"
   }
 }

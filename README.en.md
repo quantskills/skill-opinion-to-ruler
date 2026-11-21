@@ -47,13 +47,15 @@ skill-opinion-to-ruler/
 │   └── compare_baseline.py ← read-only guard: re-run vs the frozen anchor, field by field
 ├── baselines/           ← frozen reference (the acceptance anchor; committed, shipped)
 │   ├── frozen_baseline.json
+│   ├── rb-i-2024H1-real.json
 │   └── scope_declaration.json
+├── evidence/rb-i-2024H1/ ← derived real bars + provenance + cases/rules/labels for the 12 trades
 ├── output/              ← landing spot for regenerated products (runtime, not committed)
 ├── tests/
 │   ├── test_ruler.py          ← 113 cases (extraction / backtest / scope)
 │   ├── test_mcp_landing.py    ← 39 cases (payload parsing, the truncation guard, provenance and stitching attribution)
 │   ├── test_docs.py           ← 18 cases (documented numbers = real runs)
-│   ├── test_baseline_guard.py ← 53 cases (re-run compared field by field vs baselines/, negative paths, packaging guards)
+│   ├── test_baseline_guard.py ← 57 cases (field-by-field re-runs + raw/evidence tracks + negative paths + packaging guards)
 │   ├── test_preflight.py      ← 3 cases (the pre-flight contract: MCP session, permission probe, model owned by the host, stop-and-report)
 │   ├── test_contest_verify.py ← 17 cases (simulation-contest cost reconciliation: missing evidence must not yield a verdict, a locked book is not a verified cost, the delivery date is never substituted, identity fields never leak)
 
@@ -80,7 +82,7 @@ python3 scripts/evaluate.py --landed-dir tests/fixtures/landed --start 20240101 
 # reads them (see references/contest_verification.md)
 python3 scripts/contest_verify.py --out baselines/contest_verify_$(date +%Y%m%d).json
 python3 scripts/compare_baseline.py                      # read-only: re-run vs baselines/ anchor
-python3 -m pytest tests/ -v                              # 243 cases (113 + 39 + 18 + 53 + 3 + 17, see the tests/ tree below)
+python3 -m pytest tests/ -v                              # 247 cases (113 + 39 + 18 + 57 + 3 + 17, see the tests/ tree below)
 ```
 
 Real bars never go through the script: MCP tools can only be called by an **agent**. The
@@ -151,15 +153,16 @@ exercise the pipeline; they are not market evidence.
 
 ### B. Real bars (fetched via PandaData MCP, landed inside this skill)
 
-Numbers from real bars landed from licensed MCP payloads (the payloads themselves are not
-shipped), frozen in `baselines/rb-i-2024H1-real.json`. The chain is unchanged: **the agent
-fetches, the payload is written verbatim, the scripts read local files only** — the scripts never
-go online.
+Numbers from real RB/I bars, frozen in `baselines/rb-i-2024H1-real.json`. **Raw MCP responses are
+not shipped; derived public-market daily OHLCV and dominant-map CSVs are shipped** under
+`evidence/rb-i-2024H1/`. They contain only dates, OHLCV and contract identifiers—no proprietary
+response fields, credentials or account information. The chain is unchanged: **the agent fetches,
+the payload is written verbatim, the scripts read local files only** — the scripts never go online.
 
 | Item | Result |
 |---|---|
 | Window / products | 2024-01-02 – 2024-06-28 / RB, I |
-| Volume | 117 stitched daily bars per product; 234 dominant-map rows + 320 contract-day rows |
+| Volume | 117 stitched daily bars per product; 234 dominant-map rows + 234 contract-day rows actually used (`bars_used`) |
 | Dominant rolls | 1 per product (`roll_count`); the basis gap at the roll is **preserved** |
 | Trades simulated | 12 (3 skipped) |
 | Mean net / win rate / max drawdown | −0.008188 / 0.50 / −0.1453 |
@@ -167,28 +170,47 @@ go online.
 | Paired edge vs hold | **+0.012154, CI [−0.004511, +0.028479], n=12** |
 | Verdict | `inconclusive` |
 
-That table is not copied prose:
-`tests/test_baseline_guard.py::test_real_anchor_reproduces_from_the_raw_payloads` re-lands from the
-payloads, re-evaluates and compares this anchor field by field; it skips rather than passes when
-the licensed payloads are absent.
+**The opinion texts are synthetic; the market bars are real.** The twelve texts come from the
+hand-written fixture `tests/fixtures/opinions.json`, which explicitly describes itself as synthetic;
+they are not historical authors' statements. The real and fixture anchors have identical `extraction`
+objects because they use the same opinions, labels and extraction configuration. The twelve-trade
+validity result depends only on those extracted rules, real bars and the frozen baseline/cost/threshold,
+not on whether a real author wrote the texts. It tests the rule-making and evaluation pipeline, not a
+particular author's forecasting record.
+
+`evidence/rb-i-2024H1/cases_rules_labels.json` ships the case, full rule, human label and trade for
+each of the twelve `rule_id`s. Full rules are deterministically regenerated from the same fixture;
+the real anchor's `extraction` section stores summary, accuracy and config hash, not full rule objects.
+
+The table has two machine-checked replay tracks:
+`tests/test_baseline_guard.py::test_real_anchor_reproduces_from_shipped_evidence` **always runs**,
+using only the shipped derived evidence; when raw responses are available,
+`test_real_anchor_reproduces_from_the_raw_payloads` also rebuilds them, byte-checks the shipped
+evidence and replays again. Only the raw test skips when payloads are absent. Both compare 1526
+fields and preserve `inconclusive`.
 
 The re-run corrected two things too. n=12 clears the frozen trade threshold but the **CI straddles
 zero**, so the verdict stays `inconclusive` — meeting a gate is not evidence of an effect. And the
 synthetic anchor yields **−0.0185** for the same rules, the **opposite sign** to real data, which is
 precisely why synthetic evidence is not allowed to cap the value score.
 
-To reproduce (steps 1–2 are performed by the agent; the scripts never go online):
+**Independent replay (works in a clean clone; no fetching):**
+
+1. Run `python3.11 -m pytest tests/test_baseline_guard.py -k shipped_evidence -q`. It copies the seven derived files to a temporary `real_landed`, re-evaluates and compares 1526 fields.
+2. For the manual equivalent, follow `evidence/rb-i-2024H1/README.md`: run `evaluate.py --landed-dir <writable>/real_landed --start 20240102 --end 20240628`, then `compare_baseline.py --frozen baselines/rb-i-2024H1-real.json`. The landing directory must be named `real_landed`; that basename is recorded in the report.
+
+**Optional raw-payload provenance check (steps 1–2 are performed by the agent; scripts never go online):**
 
 1. `mcp__pandadata__auth_status` — if not logged in: Settings → PandaData → Login.
 2. Call `get_future_dominant` / `get_future_daily` (RB, I, **20240102–20240628** — the window the
    shipped anchor actually used; a different window is a different measurement and cannot be
    compared against this table) following the slicing table in `references/mcp-data.md`, and
-   write each returned payload **verbatim** to `tests/fixtures/raw/<method>__<label>.json`.
-3. `python3 scripts/mcp_landing.py --build` — the truncation guard lives here: a payload with
-   `truncated: true` or `row_count < total_rows` is refused with a non-zero exit. Then
-   `--verify` to re-check what landed and what was built.
-4. `python3 scripts/evaluate.py --landed-dir <writable>/real_landed --start 20240102 --end 20240628`
-   — the directory must be named `real_landed`; that is the name recorded in the report.
+   write the four returned payloads **verbatim** to `tests/fixtures/raw/<method>__<label>.json`.
+3. `python3 scripts/mcp_landing.py --build --raw-dir tests/fixtures/raw --out-dir <writable>/real_landed --start 20240102 --end 20240628`
+   — the truncation guard lives here: a payload with `truncated: true` or `row_count < total_rows`
+   is refused with a non-zero exit.
+4. `OPINION_TO_RULER_RAW_DIR=tests/fixtures/raw python3.11 -m pytest tests/test_baseline_guard.py -k raw_payloads -q`
+   replays the anchor and byte-checks the derived evidence.
 5. If the product location is not writable (an installed skill directory is read-only),
    `evaluate.py` walks `requested path -> ./output -> <skill>/output -> system temp/output`,
    **prints the path it actually wrote**, and does not crash after computing every number because

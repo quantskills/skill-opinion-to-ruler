@@ -38,10 +38,16 @@ tests/fixtures/raw/*
 tests/fixtures/contest/raw/*
 !tests/fixtures/contest/raw/README.md
 
-# Bars built from those payloads by scripts/mcp_landing.py --build. Also
-# reproducible, and real market data does not belong in a repo.
+# Runtime bars built from those payloads by scripts/mcp_landing.py --build stay
+# machine-local. The one deliberately published exception is the small, derived
+# public-market OHLCV evidence set below; raw responses and other landed runs do
+# not inherit that exception.
 tests/fixtures/landed/*
 !tests/fixtures/landed/README.md
+
+# Independent-replay evidence ships: derived daily OHLCV/dominant-map CSV,
+# provenance, and the twelve cases/rules/labels. No raw MCP response is included.
+!evidence/rb-i-2024H1/*
 
 # NOTE: tests/fixtures/*.csv at the top level (bars_RB.csv, bars_I.csv) are the
 # bundled *synthetic* fixtures the docs and the offline tests depend on. They stay

@@ -47,13 +47,15 @@ skill-opinion-to-ruler/
 │   └── compare_baseline.py ← 只读守卫：重跑结果逐项核对冻结锚点
 ├── baselines/           ← 冻结参照（验收锚点，随包发布、入库）
 │   ├── frozen_baseline.json
+│   ├── rb-i-2024H1-real.json
 │   └── scope_declaration.json
+├── evidence/rb-i-2024H1/ ← 原 12 例派生真实行情 + provenance + 案例/规则/标签（入库）
 ├── output/              ← 重新生成的落点（运行期产物，不入库）
 ├── tests/
 │   ├── test_ruler.py          ← 113 个用例（抽取 / 回测 / 范围）
 │   ├── test_mcp_landing.py    ← 39 个用例（落盘载荷解析、截断守卫、provenance 与拼接归属）
 │   ├── test_docs.py           ← 18 个用例（文档数字=实跑结果）
-│   ├── test_baseline_guard.py ← 53 个用例（重跑逐字段核对 baselines/ 锚点 + 负路径 + 打包守卫）
+│   ├── test_baseline_guard.py ← 57 个用例（重跑逐字段核对 baselines/ 锚点 + raw/evidence 双轨 + 负路径 + 打包守卫）
 │   ├── test_preflight.py      ← 3 个用例（前置检查契约：MCP 会话 / 权限探针 / 模型归宿主 / 不过就停并报告缺什么）
 │   ├── test_contest_verify.py ← 17 个用例（仿真大赛口径对账：缺证据必须不结论、锁死盘口不算成本已核验、交割日不许顶替、身份字段不外泄）
 
@@ -97,7 +99,7 @@ python3 scripts/compare_baseline.py
 python3 scripts/evaluate.py --fixture --check-baseline baselines/frozen_baseline.json
 
 # 6. 测试
-python3 -m pytest tests/ -v          # 243 个用例（113 + 39 + 18 + 53 + 3 + 17，见下方 tests/ 目录树）
+python3 -m pytest tests/ -v          # 247 个用例（113 + 39 + 18 + 57 + 3 + 17，见下方 tests/ 目录树）
 ```
 
 验收锚点是**随包发布的交付物**：`baselines/frozen_baseline.json`（冻结参照）与
@@ -173,13 +175,15 @@ python3 -m pytest tests/ -v          # 243 个用例（113 + 39 + 18 + 53 + 3 + 
 
 ### B. 真实行情（经 PandaData MCP 取数并落盘到本技能）
 
-数字来自已落盘的真实行情载荷（授权数据不进包），冻结在 `baselines/rb-i-2024H1-real.json`。
-链路没变：**agent 取数 → 载荷原样落盘 → 脚本只读本地文件**，脚本本身从未联网。
+数字来自真实 RB/I 行情，冻结在 `baselines/rb-i-2024H1-real.json`。**原始 MCP 响应不进包；
+派生的公开市场日线 OHLCV 与主力映射 CSV 随包发布**在 `evidence/rb-i-2024H1/`，只含日期、
+开高低收量和合约代码，不含专有响应字段、凭证或账号信息。链路没变：**agent 取数 → 载荷原样
+落盘 → 脚本只读本地文件**，脚本本身从未联网。
 
 | 项 | 结果 |
 |---|---|
 | 区间 / 品种 | 2024-01-02 – 2024-06-28 / RB、I |
-| 数据量 | 每品种 117 根拼接日线；234 行主力映射 + 320 行具体合约日线 |
+| 数据量 | 每品种 117 根拼接日线；234 行主力映射 + 234 行实际用于回测的具体合约日线（`bars_used`） |
 | 主力换月 | 每品种各 1 次（`roll_count`），换月处的基差跳空**保留**不抹平 |
 | 回测成交 | 12 笔（跳过 3） |
 | 净收益均值 / 胜率 / 最大回撤 | −0.008188 / 0.50 / −0.1453 |
@@ -187,26 +191,42 @@ python3 -m pytest tests/ -v          # 243 个用例（113 + 39 + 18 + 53 + 3 + 
 | 配对 edge vs 持有 | **+0.012154，CI [−0.004511, +0.028479]，n=12** |
 | 判定 | `inconclusive` |
 
-这张表不是抄下来的：`tests/test_baseline_guard.py::test_real_anchor_reproduces_from_the_raw_payloads`
-会**从载荷重新落盘、重新评测、逐字段比对**这份锚点；缺少授权载荷时该用例自动跳过，不会假装通过。
+**观点文本是合成的，行情是真实的。** 12 个案例的观点原文来自 `tests/fixtures/opinions.json` 中
+明确自述 synthetic 的手写夹具，并非历史作者原话；真实的是 2024H1 RB/I 行情。真实锚点与
+`baselines/frozen_baseline.json` 的 `extraction` 对象相同，因为二者使用同一观点夹具、标注集与
+抽取配置。12 笔交易的有效性结论只依赖规则、真实行情和冻结的基线/成本/门槛，不依赖观点是否
+由真实作者发表；它检验规则化与评价流程，不检验某位作者的历史预测能力。
+
+随包 `evidence/rb-i-2024H1/cases_rules_labels.json` 按 12 个成交 `rule_id` 提供案例、完整规则、
+人工标签与成交记录。完整规则由同一夹具确定性重建；真实锚点的 `extraction` 段只存汇总、准确率
+和配置哈希，并不保存完整规则对象。
+
+这张表不是抄下来的，且有双轨机器证明：
+`tests/test_baseline_guard.py::test_real_anchor_reproduces_from_shipped_evidence` **始终执行**，
+只从随包派生证据重跑并逐字段比对，不需要原始载荷；有原始载荷时，
+`test_real_anchor_reproduces_from_the_raw_payloads` 还会从载荷重建、逐字节核对随包证据后再复跑，
+缺少载荷时只有这条 raw 用例跳过。两条路径均比较 1526 个字段并保留 `inconclusive`。
 
 真实重跑同时纠正了两件事。其一，n=12 达到冻结门槛但 **CI 跨过 0**，所以判定仍是 `inconclusive`
 ——达标不等于有效应。其二，合成锚点上同一套规则的 edge 是 **−0.0185**，与真实行情**符号相反**：
 这正是文档不给合成证据封顶分数的理由。
 
-复现步骤（前两步由 agent 执行，脚本不联网）：
+**独立复跑（干净克隆即可，无需取数）**：
+
+1. `python3.11 -m pytest tests/test_baseline_guard.py -k shipped_evidence -q`：复制随包七份派生行情/溯源文件到临时 `real_landed`，重跑并与真实锚点比较 1526 个字段。
+2. 手工等价步骤见 `evidence/rb-i-2024H1/README.md`：运行 `evaluate.py --landed-dir <可写目录>/real_landed --start 20240102 --end 20240628`，再用 `compare_baseline.py --frozen baselines/rb-i-2024H1-real.json` 对账。落点目录名必须叫 `real_landed`，因为报告只记录 basename。
+
+**可选的 raw 全链路复核（前两步由 agent 执行，脚本不联网）**：
 
 1. `mcp__pandadata__auth_status` 确认已登录（未登录 → Settings → PandaData → Login）。
 2. 调 `mcp__pandadata__call_pandadata`，按 `references/mcp-data.md` 的切片表取
    `get_future_dominant` / `get_future_daily`（RB、I，**20240102–20240628**，与随包锚点同一窗口；
-   换窗口就是另一次测量，不能再拿来对这张表），把每次返回的载荷**原样**写成
+   换窗口就是另一次测量，不能再拿来对这张表），把四份返回载荷**原样**写成
    `tests/fixtures/raw/<method>__<label>.json`。
-3. `python3 scripts/mcp_landing.py --build`（截断守卫在这里：`row_count < total_rows` 或
-   `truncated: true` 的载荷会被拒绝并非 0 退出）；再 `--verify` 复核落盘与产物状态。
-   重跑上面那份真实锚点用 `--raw-dir tests/fixtures/raw --out-dir <tmp>/real_landed`。
-   守卫一条命令就能跑：`OPINION_TO_RULER_RAW_DIR=<载荷目录> python3.11 -m pytest tests/ -k reproduces`。
-4. `python3 scripts/evaluate.py --landed-dir <可写目录>/real_landed --start 20240102 --end 20240628`
-   ——落点目录名必须就叫 `real_landed`，报告里记录的名称才对得上锚点。
+3. `python3 scripts/mcp_landing.py --build --raw-dir tests/fixtures/raw --out-dir <可写目录>/real_landed --start 20240102 --end 20240628`
+   （截断守卫在这里：`row_count < total_rows` 或 `truncated: true` 的载荷会被拒绝并非 0 退出）。
+4. `OPINION_TO_RULER_RAW_DIR=tests/fixtures/raw python3.11 -m pytest tests/test_baseline_guard.py -k raw_payloads -q`
+   会重跑并核对派生证据。
 5. 若产物落点不可写（**安装态技能目录是只读的**），`evaluate.py` 按
    `请求路径 → 工作目录/output → 技能目录/output → 系统临时目录/output` 依次尝试，
    **打印真正写入的位置**，不会算完所有数字后因写不进包而崩溃。

@@ -42,7 +42,7 @@ python3 scripts/build.py                                 # extraction demo
 python3 scripts/annotate.py tests/fixtures/labels.json   # per-field scores
 python3 scripts/evaluate.py --fixture                    # offline acceptance run
 python3 scripts/compare_baseline.py                      # read-only guard vs baselines/
-python3 -m pytest tests/ -v                              # 243 cases
+python3 -m pytest tests/ -v                              # 247 cases
 ```
 
 The acceptance anchor ships with the skill: `baselines/frozen_baseline.json` (the frozen
@@ -51,6 +51,13 @@ installing from git can verify them. `evaluate.py` writes the **regenerated prod
 git-ignored `output/`. `compare_baseline.py` re-runs the deterministic fixtures and compares
 hundreds of fields against the anchor; a difference names the field (frozen -> new value) and
 exits non-zero.
+
+The real 2024H1 RB/I anchor also ships with derived daily OHLCV/dominant-map CSV, provenance and
+cases/rules/labels under `evidence/rb-i-2024H1/`; raw MCP responses remain uncommitted. The opinion
+texts are explicitly synthetic fixtures, while the market bars are real. Run
+`python3.11 -m pytest tests/test_baseline_guard.py -k shipped_evidence -q` for the unconditional
+1526-field replay, which preserves `inconclusive`. A second raw-payload guard runs when those local
+files are available and byte-checks the derived evidence.
 
 Live data: the script never goes online, and it could not if it tried — MCP tools are
 callable only by an **agent**. The operator instruction is a fixed four-step chain:
@@ -116,7 +123,7 @@ structured `DataUnavailable` subclass (`landing_not_found` / `payload_unreadable
 ### Tests
 
 ```bash
-python3 -m pytest tests/ -v   # 243 cases (113 ruler + 39 landing + 18 doc guards + 53 baseline-anchor guards + 3 preflight guards + 17 contest-verification guards)
+python3 -m pytest tests/ -v   # 247 cases (113 ruler + 39 landing + 18 doc guards + 57 baseline-anchor guards + 3 preflight guards + 17 contest-verification guards)
 ```
 
 ### Dependencies

@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: skill-opinion-to-ruler
   description: Extract testable trading rules from subjective market opinions. Maps free-form text into instrument, direction, entry trigger, horizon, stop loss and exit rule; validates extraction against a human-labelled sample; evaluates cost-adjusted results against a paired buy-and-hold baseline.
-  version: 0.8.0
+  version: 0.9.0
 
 x-skill-info:
   name: skill-opinion-to-ruler
@@ -66,6 +66,17 @@ x-acceptance-anchor:
   guard: tests/test_baseline_guard.py
   tolerance: 5e-07                          # half a unit of the report's 6-dp rounding
   waived_fields: [generated_at]
+
+x-real-market-evidence:
+  anchor: baselines/rb-i-2024H1-real.json
+  derived_data: evidence/rb-i-2024H1/
+  cases_rules_labels: evidence/rb-i-2024H1/cases_rules_labels.json
+  raw_payloads_shipped: false
+  opinion_texts: synthetic
+  market_bars: real
+  verdict: inconclusive
+  unconditional_guard: tests/test_baseline_guard.py::test_real_anchor_reproduces_from_shipped_evidence
+  optional_raw_guard: tests/test_baseline_guard.py::test_real_anchor_reproduces_from_the_raw_payloads
 
 x-data-sources:
   - id: pandadata_mcp_landing

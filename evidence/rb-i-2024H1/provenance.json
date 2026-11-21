@@ -1,0 +1,129 @@
+{
+  "allow_partial": false,
+  "conflicting_rows": 0,
+  "files": {
+    "bars_I2405.DCE.csv": {
+      "first_date": "20240102",
+      "last_date": "20240327",
+      "method": "get_future_daily",
+      "partial": false,
+      "payloads": [
+        "get_future_daily__I2405_20240102_20240327.json"
+      ],
+      "requested_window": {
+        "end": "20240327",
+        "start": "20240102",
+        "symbol": [
+          "I2405.DCE"
+        ]
+      },
+      "rows": 56,
+      "symbol": "I2405.DCE"
+    },
+    "bars_I2409.DCE.csv": {
+      "first_date": "20240328",
+      "last_date": "20240628",
+      "method": "get_future_daily",
+      "partial": false,
+      "payloads": [
+        "get_future_daily__I2409_20240328_20240628.json"
+      ],
+      "requested_window": {
+        "end": "20240628",
+        "start": "20240328",
+        "symbol": [
+          "I2409.DCE"
+        ]
+      },
+      "rows": 61,
+      "symbol": "I2409.DCE"
+    },
+    "bars_RB2405.SHF.csv": {
+      "first_date": "20240102",
+      "last_date": "20240515",
+      "method": "get_future_daily",
+      "partial": false,
+      "payloads": [
+        "get_future_daily__RB_20240102_20240628.json"
+      ],
+      "requested_window": {
+        "end": "20240628",
+        "start": "20240102",
+        "symbol": [
+          "RB2405.SHF",
+          "RB2410.SHF"
+        ]
+      },
+      "rows": 86,
+      "symbol": "RB2405.SHF"
+    },
+    "bars_RB2410.SHF.csv": {
+      "first_date": "20240102",
+      "last_date": "20240628",
+      "method": "get_future_daily",
+      "partial": false,
+      "payloads": [
+        "get_future_daily__RB_20240102_20240628.json"
+      ],
+      "requested_window": {
+        "end": "20240628",
+        "start": "20240102",
+        "symbol": [
+          "RB2405.SHF",
+          "RB2410.SHF"
+        ]
+      },
+      "rows": 117,
+      "symbol": "RB2410.SHF"
+    },
+    "dominant_I.csv": {
+      "contracts": [
+        "I2405.DCE",
+        "I2409.DCE"
+      ],
+      "first_date": "20240102",
+      "last_date": "20240628",
+      "method": "get_future_dominant",
+      "partial": false,
+      "payloads": [
+        "get_future_dominant__I_RB_20240102_20240628.json"
+      ],
+      "product": "I",
+      "requested_window": {
+        "end": "20240628",
+        "start": "20240102"
+      },
+      "rolls": 1,
+      "rows": 117
+    },
+    "dominant_RB.csv": {
+      "contracts": [
+        "RB2405.SHF",
+        "RB2410.SHF"
+      ],
+      "first_date": "20240102",
+      "last_date": "20240628",
+      "method": "get_future_dominant",
+      "partial": false,
+      "payloads": [
+        "get_future_dominant__I_RB_20240102_20240628.json"
+      ],
+      "product": "RB",
+      "requested_window": {
+        "end": "20240628",
+        "start": "20240102"
+      },
+      "rolls": 1,
+      "rows": 117
+    }
+  },
+  "generated_by": "scripts/mcp_landing.py",
+  "partial": false,
+  "partial_payloads": [],
+  "raw_dir": "tests/fixtures/raw",
+  "rows_outside_window": 0,
+  "window": {
+    "end": "20240628",
+    "start": "20240102"
+  }
+}
