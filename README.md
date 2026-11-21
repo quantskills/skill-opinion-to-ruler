@@ -54,7 +54,7 @@ skill-opinion-to-ruler/
 ├── tests/
 │   ├── test_ruler.py          ← 113 个用例（抽取 / 回测 / 范围）
 │   ├── test_mcp_landing.py    ← 39 个用例（落盘载荷解析、截断守卫、provenance 与拼接归属）
-│   ├── test_docs.py           ← 18 个用例（文档数字=实跑结果）
+│   ├── test_docs.py           ← 19 个用例（文档数字=实跑结果）
 │   ├── test_baseline_guard.py ← 58 个用例（重跑逐字段核对 baselines/ 锚点 + raw/evidence 双轨 + 负路径 + 打包守卫）
 │   ├── test_preflight.py      ← 3 个用例（前置检查契约：MCP 会话 / 权限探针 / 模型归宿主 / 不过就停并报告缺什么）
 │   ├── test_contest_verify.py ← 17 个用例（仿真大赛口径对账：缺证据必须不结论、锁死盘口不算成本已核验、交割日不许顶替、身份字段不外泄）
@@ -99,7 +99,7 @@ python3 scripts/compare_baseline.py
 python3 scripts/evaluate.py --fixture --check-baseline baselines/frozen_baseline.json
 
 # 6. 测试
-python3 -m pytest tests/ -v          # 248 个用例（113 + 39 + 18 + 58 + 3 + 17，见下方 tests/ 目录树）
+python3 -m pytest tests/ -v          # 249 个用例（113 + 39 + 19 + 58 + 3 + 17，见下方 tests/ 目录树）
 ```
 
 验收锚点是**随包发布的交付物**：`baselines/frozen_baseline.json`（冻结参照）与
@@ -254,6 +254,7 @@ python3 -m pytest tests/ -v          # 248 个用例（113 + 39 + 18 + 58 + 3 + 
 - 抽取基于词典与正则，不是 LLM；**支持中文与英文（可混写）**，覆盖常见期货表述，反讽、长距离指代、生僻比喻会落到 `none` 或产生 `ambiguity`。
 - 英文按词边界匹配（`long` 不命中 `longer`），但同句多空并存仍记为歧义。
 - 词典是白名单，新增语言或新品种需改 `scripts/common.py`，不动逻辑。
+- 非标观点文本由阅读本 skill 的 agent 先规范化再调用（见 SKILL.md「非标准输入的规范化前置」）：只调整语序措辞，禁止增删改水平 / 方向 / 品种；凑不齐三要素（品种、方向、显式价格水平）时必须告知用户「该观点不具备分析要点」、指出缺项并给出一条规范语句示例，不得编造输入调用抽取。
 - 品种别名是白名单，表外品种不猜。
 - 组合层面的资金竞争未建模，规则逐条独立评估。
 - 样本量门槛（12 笔）是按上界保守设定的，并不代表 12 笔就有统计功效。

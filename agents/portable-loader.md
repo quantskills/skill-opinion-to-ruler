@@ -42,7 +42,7 @@ python3 scripts/build.py                                 # extraction demo
 python3 scripts/annotate.py tests/fixtures/labels.json   # per-field scores
 python3 scripts/evaluate.py --fixture                    # offline acceptance run
 python3 scripts/compare_baseline.py                      # read-only guard vs baselines/
-python3 -m pytest tests/ -v                              # 248 cases
+python3 -m pytest tests/ -v                              # 249 cases
 ```
 
 The acceptance anchor ships with the skill: `baselines/frozen_baseline.json` (the frozen
@@ -123,7 +123,7 @@ structured `DataUnavailable` subclass (`landing_not_found` / `payload_unreadable
 ### Tests
 
 ```bash
-python3 -m pytest tests/ -v   # 248 cases (113 ruler + 39 landing + 18 doc guards + 58 baseline-anchor guards + 3 preflight guards + 17 contest-verification guards)
+python3 -m pytest tests/ -v   # 249 cases (113 ruler + 39 landing + 19 doc guards + 58 baseline-anchor guards + 3 preflight guards + 17 contest-verification guards)
 ```
 
 ### Dependencies

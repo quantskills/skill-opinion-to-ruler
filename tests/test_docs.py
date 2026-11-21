@@ -563,3 +563,25 @@ def test_changelog_current_entry_quotes_the_live_suite_total():
     wrong = [n for n in added if n != total - BEFORE]
     assert not wrong, ("CHANGELOG claims %s added cases; %d - %d = %d"
                        % (wrong, total, BEFORE, total - BEFORE))
+
+
+def test_agent_normalization_protocol_is_documented():
+    """The pre-normalization conduct must live in SKILL.md and both READMEs.
+
+    Extraction is lexicon + regex and only accepts canonical sentences. The
+    fallback for non-normalizable input is refuse + name the missing essential
+    + give one canonical example -- never invent levels. If this protocol
+    silently disappears from the docs, reading agents will start feeding the
+    extractor fabricated input, and every downstream number becomes fiction
+    with a clean audit trail.
+    """
+    skill = _read(os.path.join(ROOT, "SKILL.md"))
+    for token in ("非标准输入的规范化前置", "不具备分析要点", "规范语句",
+                  "禁止增删改任何价格水平、方向、品种"):
+        assert token in skill, "SKILL.md lost the normalization protocol: %r" % token
+
+    for token in ("规范化", "不具备分析要点", "规范语句示例"):
+        assert token in README, "README.md lost the normalization bullet: %r" % token
+    for token in ("normaliz", "analyzable essentials", "canonical example"):
+        assert token.lower() in README_EN.lower(), \
+            "README.en.md lost the normalization bullet: %r" % token

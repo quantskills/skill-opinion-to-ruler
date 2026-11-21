@@ -54,7 +54,7 @@ skill-opinion-to-ruler/
 ├── tests/
 │   ├── test_ruler.py          ← 113 cases (extraction / backtest / scope)
 │   ├── test_mcp_landing.py    ← 39 cases (payload parsing, the truncation guard, provenance and stitching attribution)
-│   ├── test_docs.py           ← 18 cases (documented numbers = real runs)
+│   ├── test_docs.py           ← 19 cases (documented numbers = real runs)
 │   ├── test_baseline_guard.py ← 58 cases (field-by-field re-runs + raw/evidence tracks + negative paths + packaging guards)
 │   ├── test_preflight.py      ← 3 cases (the pre-flight contract: MCP session, permission probe, model owned by the host, stop-and-report)
 │   ├── test_contest_verify.py ← 17 cases (simulation-contest cost reconciliation: missing evidence must not yield a verdict, a locked book is not a verified cost, the delivery date is never substituted, identity fields never leak)
@@ -82,7 +82,7 @@ python3 scripts/evaluate.py --landed-dir tests/fixtures/landed --start 20240101 
 # reads them (see references/contest_verification.md)
 python3 scripts/contest_verify.py --out baselines/contest_verify_$(date +%Y%m%d).json
 python3 scripts/compare_baseline.py                      # read-only: re-run vs baselines/ anchor
-python3 -m pytest tests/ -v                              # 248 cases (113 + 39 + 18 + 58 + 3 + 17, see the tests/ tree below)
+python3 -m pytest tests/ -v                              # 249 cases (113 + 39 + 19 + 58 + 3 + 17, see the tests/ tree below)
 ```
 
 Real bars never go through the script: MCP tools can only be called by an **agent**. The
@@ -241,6 +241,7 @@ one or two months the opinion texts cover (Jan–Feb 2024 for these fixtures), s
 - Extraction is lexicon + regex, not an LLM. **Chinese and English are both supported, including mixed sentences.** It covers common futures phrasing; irony, long-range anaphora and unusual metaphor fall to `none` or raise `ambiguity`.
 - English matching is word-boundary aware (`long` does not fire inside `longer`), but a sentence containing both long and short wording is still flagged as ambiguous.
 - The lexicon is an explicit whitelist. New languages or new products require edits to `scripts/common.py`; the logic does not change.
+- Non-standard opinion text is normalized by the reading agent before calling this skill (see SKILL.md, agent pre-normalization protocol): rewording only - never adding, removing or altering price levels, directions or products. When the three analyzable essentials (product, direction, an explicit price level) cannot be formed, the agent must tell the user the opinion lacks the analyzable essentials, name what is missing and give one canonical example sentence - never fabricate extractor input.
 - The instrument alias table is a whitelist; unknown products are not guessed.
 - Cross-rule capital competition is not modelled; rules are evaluated independently.
 - The 12-trade threshold is conservative. Passing it does not imply statistical power.
