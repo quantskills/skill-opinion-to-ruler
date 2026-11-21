@@ -95,6 +95,28 @@ print(backtest["verdict"], backtest["edge"])
 print(value_assessment(backtest))
 ```
 
+### Non-standard input (agent interaction flow)
+
+Extraction is lexicon + regex and only accepts canonical opinion sentences.
+Before calling `run()`, the agent normalizes user input — or refuses:
+
+1. Triage the three analyzable essentials: whitelisted instrument, explicit
+   direction (stand-aside = neutral), at least one explicit price level
+   (horizon optional; the frozen policy fills it as `policy_default`).
+2. Non-canonical but complete → reword only (never add/remove/alter levels,
+   directions or products; guessing = missing). Show the user original →
+   normalized.
+3. Missing essentials → do not call the extractor, do not fabricate: tell the
+   user the opinion lacks the analyzable essentials, name what is missing, and
+   give one canonical example sentence.
+4. Invoke with `text` = canonical sentence, `published_at` = the real publish
+   time (ask if absent, never invent — the backtester refuses without it), and
+   keep the raw wording in an extra field (e.g. `raw_text`; tolerated, not
+   echoed back).
+5. Report rules / neutral / unruleable / ambiguity verbatim.
+
+Full prose: SKILL.md, 「非标准输入的规范化前置（agent 行为准则）」.
+
 ### Output shape
 
 `schema_version`, `documents[]` (each with `rules[]`, `unruleable[]`, `counts`), `summary`, `config`, `config_hash`. Full contract in `references/schema.md`.

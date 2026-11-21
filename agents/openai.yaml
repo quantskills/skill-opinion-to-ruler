@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: skill-opinion-to-ruler
   description: Extract testable trading rules from subjective market opinions. Maps free-form text into instrument, direction, entry trigger, horizon, stop loss and exit rule; validates extraction against a human-labelled sample; evaluates cost-adjusted results against a paired buy-and-hold baseline.
-  version: 0.9.2
+  version: 0.9.3
 
 x-skill-info:
   name: skill-opinion-to-ruler
@@ -37,6 +37,45 @@ x-steps:
     script: scripts/compare_baseline.py
     description: Read-only acceptance guard. Re-runs the deterministic bundled fixtures and compares every field against the shipped anchor baselines/frozen_baseline.json plus baselines/scope_declaration.json; names each field that moved (frozen -> new) and exits 1. Reads files only; never fetches.
     auth_required: false
+
+x-interaction-flow:
+  # User <-> agent protocol BEFORE the extractor runs. Extraction is lexicon +
+  # regex and only accepts canonical opinion sentences; making the input
+  # canonical is the agent's job, and refusing beats guessing. Full prose in
+  # SKILL.md ("非标准输入的规范化前置").
+  steps:
+    - id: triage
+      agent: >-
+        Check the three analyzable essentials: whitelisted instrument, explicit
+        direction (a stand-aside counts as neutral), at least one explicit price
+        level. Horizon is optional - the frozen policy fills it and marks it
+        policy_default.
+    - id: normalize
+      when: non-canonical but all essentials present (colloquial, elliptic, mixed-language)
+      agent: >-
+        Reword into a canonical sentence: word order and phrasing only; never
+        add, remove or alter price levels, directions or products; anything
+        that would require a guess counts as missing. Show the user
+        original -> normalized.
+    - id: refuse_with_template
+      when: any essential missing and not recoverable from the text
+      agent: >-
+        Do NOT call the extractor and do NOT fabricate. Tell the user the
+        opinion lacks the analyzable essentials, name the missing item(s), and
+        give one canonical example sentence built from their intent. Return to
+        triage after the user confirms or completes it.
+    - id: invoke
+      agent: >-
+        Build the documents input: text = canonical sentence; published_at =
+        the opinion's real publish time (ask the user if absent, never invent
+        it - backtesting refuses to run without it); keep the user's raw
+        wording in an extra field such as raw_text (tolerated, not echoed back
+        by the pipeline).
+    - id: report
+      agent: >-
+        Relay rules / neutral / unruleable / ambiguity as-is; quote unruleable
+        reasons verbatim instead of euphemizing them.
+  canonical_template: "{product}主力 站稳{trigger} 看多，目标{target}，跌破{stop}止损，{horizon}。"
 
 x-preflight:
   # Mirror of the "## 前置检查" section in SKILL.md: host-provided data and model,

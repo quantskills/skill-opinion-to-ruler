@@ -585,3 +585,18 @@ def test_agent_normalization_protocol_is_documented():
     for token in ("normaliz", "analyzable essentials", "canonical example"):
         assert token.lower() in README_EN.lower(), \
             "README.en.md lost the normalization bullet: %r" % token
+
+    # 交互流程必须活在运行时适配器里——agent 实际执行时读的是这三个文件，
+    # 只写在 SKILL.md / README 里等于没写。
+    adapters = {
+        "agents/openai.yaml": ("x-interaction-flow", "refuse_with_template",
+                               "lacks the analyzable essentials", "never invent"),
+        "agents/cursor-rule.mdc": ("normalize first, refuse second, never fabricate",
+                                   "analyzable essentials", "never invent"),
+        "agents/portable-loader.md": ("Non-standard input (agent interaction flow)",
+                                      "analyzable essentials", "never invent"),
+    }
+    for path, tokens in adapters.items():
+        text = _read(os.path.join(ROOT, path))
+        for token in tokens:
+            assert token in text, "%s lost the interaction flow: %r" % (path, token)

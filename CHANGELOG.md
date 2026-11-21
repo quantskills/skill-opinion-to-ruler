@@ -6,6 +6,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [0.9.3] — 2026-11-21
+
+套件规模：164 → 249 条用例，累计新增 85 条（本版 0 条，只扩既有守卫的断言）。
+**non-breaking**：抽取器、词典、判定规则、两份锚点与 PandaData MCP 取数通道全部
+未动；本版把 0.9.2 的规范化口径落进**用户与 agent 的交互流程**，写进运行时适配器。
+
+### Added（交互流程进适配器——agent 执行时真正读到的地方）
+- SKILL.md「非标准输入的规范化前置」补完整交互流程图：三要素判定 → 改写（向用户
+  展示「原文 → 改写结果」）→ 组装输入（`published_at` 必须真实，缺失就问、绝不
+  编造）→ 调用 → 回报（unruleable 的 reason 原样转述）；要素不全走「告知不具备
+  分析要点 + 给规范语句示例 + 用户确认后回到判定」。
+- `agents/openai.yaml` 新增 `x-interaction-flow`（5 步：triage / normalize /
+  refuse_with_template / invoke / report + canonical_template）；
+  `agents/cursor-rule.mdc` 新增「Non-standard input: normalize first, refuse
+  second, never fabricate」节；`agents/portable-loader.md` 的 Agent Integration
+  新增同款流程小节。三个适配器与 SKILL.md 口径一致。
+- `tests/test_docs.py::test_agent_normalization_protocol_is_documented` 扩展断言：
+  交互流程必须同时存在于三个适配器（防止只写在设计文档里、运行时 agent 读不到）。
+
 ## [0.9.2] — 2026-11-21
 
 套件规模：164 → 249 条用例，累计新增 85 条（其中本版 1 条）。**non-breaking**：

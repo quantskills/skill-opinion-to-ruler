@@ -65,6 +65,33 @@ result = run({
 - `neutral` — explicit stand-aside; no position is the signal
 - `none` — no instrument or no direction; reported, never dropped
 
+## Non-standard input: normalize first, refuse second, never fabricate
+
+The extractor is lexicon + regex and only accepts canonical opinion sentences.
+When the user's text is colloquial, elliptic or mixed-language, run this
+interaction flow before calling the skill:
+
+1. **Triage** the three analyzable essentials: whitelisted instrument, explicit
+   direction (a stand-aside counts as neutral), at least one explicit price
+   level. Horizon is optional — the frozen policy fills it and marks it
+   `policy_default`.
+2. **All present** → reword into a canonical sentence: word order and phrasing
+   only; never add, remove or alter price levels, directions or products;
+   anything you would have to guess counts as missing. Show the user
+   original → normalized.
+3. **Any essential missing** → do NOT call the extractor and do NOT fabricate.
+   Tell the user the opinion lacks the analyzable essentials, name the missing
+   item(s), and give one canonical example sentence built from their intent;
+   re-triage after they confirm or complete it.
+4. **Invoke** with `text` = the canonical sentence and `published_at` = the
+   opinion's real publish time (ask if absent, never invent it — backtesting
+   refuses without it). Keep the raw wording in an extra field such as
+   `raw_text` (tolerated, not echoed back).
+5. **Report** rules / neutral / unruleable / ambiguity as-is; quote unruleable
+   reasons verbatim.
+
+Canonical template: `{品种}主力 站稳{触发价} 看多，目标{目标价}，跌破{止损价}止损，{期限}。`
+
 ## Evaluation
 
 - Baseline: paired buy-and-hold over identical entry/exit dates (`cash` also available)
