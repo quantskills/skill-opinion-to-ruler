@@ -1,5 +1,7 @@
 # Opinion to Ruler
 
+QuantSkills release maintainer: [abgyjaguo](https://github.com/abgyjaguo).
+
 Turn a subjective trading opinion (a comment, a daily note, a talk transcript) into **testable, backtestable trading rules**, validate the extraction against a human-labelled sample, then evaluate cost-adjusted results against a frozen baseline.
 
 The question this skill answers is *"can this opinion become a decidable rule?"* — not *"how bullish does it sound?"*

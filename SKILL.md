@@ -2,6 +2,15 @@
 name: skill-opinion-to-ruler
 description: 当需要把一段主观交易观点转成可回测、可检验的交易规则时，使用此 skill。抽取标的/方向/触发/期限/止损/止盈六字段，标注样本校验抽取准确率，并按冻结基线做成本后评估。
 tags: [quant, alpha, opinion, rule-extraction, backtest]
+license: GPL-3.0-only
+metadata:
+  license: GPL-3.0-only
+  organization: QuantSkills
+  organization_url: https://github.com/quantskills
+  repository: skill-opinion-to-ruler
+  repository_url: https://github.com/quantskills/skill-opinion-to-ruler
+  project_type: skill
+  collection: strategy-research
 ---
 
 ## 前置检查（未通过就停：只报告缺什么，不加载后续流程）
